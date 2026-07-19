@@ -1,0 +1,17 @@
+# Real guest PII -- never push this to GitHub, even private.
+guest-notes/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Generated report output
+*.xlsx
+
+# Local Claude Code settings (machine-specific permissions)
+.claude/settings.local.json
+
+# Editor/OS cruft
+.DS_Store
