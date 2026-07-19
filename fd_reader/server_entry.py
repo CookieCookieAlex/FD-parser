@@ -31,6 +31,19 @@ def run_server(port: int) -> None:
     `streamlit run` invocation would -- equivalent to:
         streamlit run <app_path> --server.port <port>
             --server.headless true --browser.gatherUsageStats false
+            --global.developmentMode false
+
+    The last flag is required in the frozen .exe specifically: Streamlit
+    auto-detects "development mode" by checking whether
+    "site-packages" appears in streamlit/config.py's own file path (true
+    for a normal `pip install`, false otherwise) -- but a PyInstaller
+    build unpacks everything into a temp _MEIPASS directory with no
+    site-packages in the path at all, so that heuristic wrongly concludes
+    "this is a dev checkout" and turns development mode on. With it on,
+    Streamlit raises "server.port does not work when
+    global.developmentMode is true" and refuses to start -- confirmed by
+    running the actual packaged .exe on Windows, not guessed up front.
+    Explicitly forcing it off here overrides the bad auto-detection.
     """
     from streamlit.web import cli as stcli
 
@@ -39,6 +52,7 @@ def run_server(port: int) -> None:
         "--server.port", str(port),
         "--server.headless", "true",
         "--browser.gatherUsageStats", "false",
+        "--global.developmentMode", "false",
     ]
     sys.exit(stcli.main())
 
