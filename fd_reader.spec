@@ -27,8 +27,9 @@ for pkg in ("streamlit", "pdfplumber", "pandas", "openpyxl", "rapidfuzz"):
     hiddenimports += pkg_hiddenimports
 
 # The Streamlit app script itself + this project's package, bundled as
-# data so launcher.py can invoke `streamlit run <path>/fd_reader/app.py`
-# as a subprocess exactly like it does in dev.
+# data so fd_reader/server_entry.py can find fd_reader/app.py as a real
+# file at runtime (via sys._MEIPASS when frozen) to hand to Streamlit's
+# CLI -- see server_entry.py's app_path().
 datas += [("fd_reader", "fd_reader")]
 
 a = Analysis(
