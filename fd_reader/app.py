@@ -27,7 +27,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import streamlit as st
 
 from fd_reader.cli import _discover_pdfs
-from fd_reader.match import cross_check_notes, detect_room_moves, match_reservations
+from fd_reader.match import (
+    cross_check_notes,
+    detect_room_moves,
+    find_room_groups,
+    match_reservations,
+)
 from fd_reader.parse_guests import parse_guest_pdf
 from fd_reader.parse_reservations import parse_reservation_pdf
 from fd_reader.report import BLUE, GREEN, RED, YELLOW, GuestBlock, build_guest_blocks
@@ -54,7 +59,9 @@ _NOTE_FIELDS = [
 
 
 @st.cache_data(show_spinner=False)
-def _run_pipeline(guest_paths: tuple[str, ...], yelp_paths: tuple[str, ...]) -> list[GuestBlock]:
+def _run_pipeline(
+    guest_paths: tuple[str, ...], yelp_paths: tuple[str, ...]
+) -> tuple[list[GuestBlock], int, int]:
     guests = []
     for path in guest_paths:
         guests.extend(parse_guest_pdf(path))
@@ -66,8 +73,10 @@ def _run_pipeline(guest_paths: tuple[str, ...], yelp_paths: tuple[str, ...]) -> 
     match_results = match_reservations(guests, reservations)
     note_checks = cross_check_notes(guests, match_results)
     room_moves = detect_room_moves(guests)
+    room_groups = find_room_groups(guests)
 
-    return build_guest_blocks(guests, match_results, note_checks, room_moves)
+    blocks = build_guest_blocks(guests, match_results, note_checks, room_moves)
+    return blocks, len(room_moves), len(room_groups)
 
 
 def _block_worst_color(block: GuestBlock) -> str:
@@ -137,20 +146,22 @@ def _render_card(block: GuestBlock) -> None:
                     st.caption(f"Notes & Tags: {line.reservation.notes_tags}")
 
 
-def _summary_bar(blocks: list[GuestBlock]) -> None:
+def _summary_bar(blocks: list[GuestBlock], room_move_count: int, group_booking_count: int) -> None:
     counts = {GREEN: 0, YELLOW: 0, RED: 0, BLUE: 0}
     for block in blocks:
         counts[_block_worst_color(block)] += 1
 
-    cols = st.columns(5)
+    cols = st.columns(7)
     cols[0].metric("Total guests", len(blocks))
     cols[1].metric("🟢 Clean", counts[GREEN])
     cols[2].metric("🟡 Needs a look", counts[YELLOW])
     cols[3].metric("🔴 Mismatched", counts[RED])
     cols[4].metric("🔵 No reservation", counts[BLUE])
+    cols[5].metric("🔁 Room moves", room_move_count)
+    cols[6].metric("🔗 Group bookings", group_booking_count)
 
 
-def _load_from_folder(folder: str) -> list[GuestBlock] | None:
+def _load_from_folder(folder: str) -> tuple[list[GuestBlock], int, int] | None:
     if not folder or not os.path.isdir(folder):
         st.warning("Enter a valid folder path.")
         return None
@@ -164,7 +175,7 @@ def _load_from_folder(folder: str) -> list[GuestBlock] | None:
     return _run_pipeline(tuple(guest_paths), tuple(yelp_paths))
 
 
-def _load_from_uploads(uploaded_files) -> list[GuestBlock] | None:
+def _load_from_uploads(uploaded_files) -> tuple[list[GuestBlock], int, int] | None:
     if not uploaded_files:
         return None
 
@@ -193,27 +204,28 @@ def main() -> None:
 
     mode = st.radio("Load PDFs from:", ["Folder path", "Upload files"], horizontal=True)
 
-    blocks: list[GuestBlock] | None = None
+    result: tuple[list[GuestBlock], int, int] | None = None
     if mode == "Folder path":
         folder = st.text_input("Folder containing the arrivals PDF(s) and Yelp PDF(s)")
         if st.button("Load", type="primary") and folder:
             with st.spinner("Parsing and matching..."):
-                blocks = _load_from_folder(folder)
-            st.session_state["blocks"] = blocks
+                result = _load_from_folder(folder)
+            st.session_state["result"] = result
     else:
         uploaded = st.file_uploader(
             "Upload the arrivals PDF(s) and Yelp PDF(s)", type="pdf", accept_multiple_files=True
         )
         if st.button("Load", type="primary") and uploaded:
             with st.spinner("Parsing and matching..."):
-                blocks = _load_from_uploads(uploaded)
-            st.session_state["blocks"] = blocks
+                result = _load_from_uploads(uploaded)
+            st.session_state["result"] = result
 
-    blocks = st.session_state.get("blocks")
-    if not blocks:
+    result = st.session_state.get("result")
+    if not result:
         return
+    blocks, room_move_count, group_booking_count = result
 
-    _summary_bar(blocks)
+    _summary_bar(blocks, room_move_count, group_booking_count)
     st.divider()
 
     filter_choice = st.multiselect(

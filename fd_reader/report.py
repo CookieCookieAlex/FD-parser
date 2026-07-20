@@ -104,14 +104,22 @@ def build_guest_blocks(
     # find_room_groups' docstring -- e.g. Guest B's 3 rooms). The
     # reservation itself still only ever shows on its own confirmation
     # ID's block; this is purely a "look at the sibling room" pointer.
-    group_rooms_by_confirmation: dict[str, list[str]] = {}
+    # (room_name, other_guest_name_or_None) -- the guest name is only
+    # included for same_surname groups, where the other room belongs to a
+    # DIFFERENT person (e.g. "Guest Y"), not shown for exact_name
+    # groups where it'd just repeat this guest's own name.
+    group_rooms_by_confirmation: dict[str, tuple[list[tuple[str, str | None]], str]] = {}
     for group in find_room_groups(guests):
         for record in group.records:
             other_rooms = [
-                r.room_name for r in group.records
+                (
+                    r.room_name,
+                    r.guest_name if group.matched_by == "same_surname" else None,
+                )
+                for r in group.records
                 if r.confirmation_number != record.confirmation_number and r.room_name
             ]
-            group_rooms_by_confirmation[record.confirmation_number] = other_rooms
+            group_rooms_by_confirmation[record.confirmation_number] = (other_rooms, group.matched_by)
 
     blocks: list[GuestBlock] = []
 
@@ -132,12 +140,24 @@ def build_guest_blocks(
             room_move_note = f"Room move: moved here from {move.earlier.room_name} on {guest.arrival_date}"
 
         linked_group_note = None
-        other_rooms = group_rooms_by_confirmation.get(guest.confirmation_number)
-        if other_rooms:
-            linked_group_note = (
-                f"Linked group booking (same name/dates) -- also see room(s): "
-                f"{', '.join(other_rooms)}"
-            )
+        group_entry = group_rooms_by_confirmation.get(guest.confirmation_number)
+        if group_entry and group_entry[0]:
+            other_rooms, matched_by = group_entry
+            if matched_by == "same_surname":
+                room_descriptions = ", ".join(
+                    f"{room} ({other_name})" if other_name else room
+                    for room, other_name in other_rooms
+                )
+                linked_group_note = (
+                    f"Probable group booking (same surname, same dates, different "
+                    f"first name) -- also see room(s): {room_descriptions}"
+                )
+            else:
+                room_descriptions = ", ".join(room for room, _ in other_rooms)
+                linked_group_note = (
+                    f"Linked group booking (same name/dates) -- also see room(s): "
+                    f"{room_descriptions}"
+                )
 
         blocks.append(
             GuestBlock(
@@ -234,12 +254,21 @@ RIGHT_START_COL = LEFT_COL_COUNT + 2  # one blank spacer column
 RIGHT_COL_COUNT = 6
 
 
-def write_report(blocks: list[GuestBlock], path: str) -> None:
+def write_report(
+    blocks: list[GuestBlock],
+    path: str,
+    room_move_count: int = 0,
+    group_booking_count: int = 0,
+) -> None:
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "Guest x Yelp Cross-Check"
 
-    _write_summary(sheet, blocks, row=1)
+    _write_summary(
+        sheet, blocks, row=1,
+        room_move_count=room_move_count,
+        group_booking_count=group_booking_count,
+    )
     row = 4
     row = _write_legend(sheet, row)
     row += 1
@@ -252,7 +281,13 @@ def write_report(blocks: list[GuestBlock], path: str) -> None:
     workbook.save(path)
 
 
-def _write_summary(sheet: Worksheet, blocks: list[GuestBlock], row: int) -> None:
+def _write_summary(
+    sheet: Worksheet,
+    blocks: list[GuestBlock],
+    row: int,
+    room_move_count: int = 0,
+    group_booking_count: int = 0,
+) -> None:
     total = len(blocks)
     color_counts = {GREEN: 0, YELLOW: 0, RED: 0, BLUE: 0}
     for block in blocks:
@@ -266,7 +301,9 @@ def _write_summary(sheet: Worksheet, blocks: list[GuestBlock], row: int) -> None
     sheet.cell(row=row + 1, column=1, value=(
         f"{total} guests -- "
         f"{color_counts[GREEN]} clean, {color_counts[YELLOW]} need a look, "
-        f"{color_counts[RED]} mismatched, {color_counts[BLUE]} no reservation"
+        f"{color_counts[RED]} mismatched, {color_counts[BLUE]} no reservation, "
+        f"{room_move_count} room move{'s' if room_move_count != 1 else ''}, "
+        f"{group_booking_count} group booking{'s' if group_booking_count != 1 else ''}"
     ))
 
 

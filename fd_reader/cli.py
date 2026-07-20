@@ -19,7 +19,12 @@ import sys
 
 import pdfplumber
 
-from fd_reader.match import cross_check_notes, detect_room_moves, match_reservations
+from fd_reader.match import (
+    cross_check_notes,
+    detect_room_moves,
+    find_room_groups,
+    match_reservations,
+)
 from fd_reader.parse_guests import parse_guest_pdf
 from fd_reader.parse_reservations import parse_reservation_pdf
 from fd_reader.report import build_guest_blocks, write_report
@@ -110,13 +115,19 @@ def main(argv: list[str] | None = None) -> int:
     match_results = match_reservations(guests, reservations)
     note_checks = cross_check_notes(guests, match_results)
     room_moves = detect_room_moves(guests)
+    room_groups = find_room_groups(guests)
 
     blocks = build_guest_blocks(guests, match_results, note_checks, room_moves)
-    write_report(blocks, args.out)
+    write_report(
+        blocks, args.out,
+        room_move_count=len(room_moves),
+        group_booking_count=len(room_groups),
+    )
 
     print(
         f"{len(guest_files)} arrivals PDF(s), {len(yelp_files)} Yelp PDF(s) -> "
-        f"{len(guests)} guests, {len(reservations)} reservations -> {args.out}"
+        f"{len(guests)} guests, {len(reservations)} reservations, "
+        f"{len(room_moves)} room move(s), {len(room_groups)} group booking(s) -> {args.out}"
     )
     return 0
 
