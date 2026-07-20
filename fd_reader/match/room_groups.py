@@ -18,8 +18,8 @@ from fd_reader.models import GuestRecord
 @dataclass
 class RoomGroup:
     """matched_by tells you WHY these records were linked:
-      - "exact_name": identical guest_name (confirmed real: Guest B,
-        Guest B across TAHAW/AMPER/MTJO; Guest H across
+      - "exact_name": identical guest_name (confirmed real: Guest B
+        across TAHAW/AMPER/MTJO; Guest H across
         WTFACE/TREE; Guest J across HAWK/LOON) -- high confidence.
       - "same_surname": same surname, same dates, but a DIFFERENT first
         name (e.g. "Guest X" and "Guest Y" arriving/departing

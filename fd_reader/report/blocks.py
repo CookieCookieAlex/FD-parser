@@ -18,13 +18,27 @@ Each Yelp-side line gets its own color + short note (not one blended color
 per guest, since a guest can have several reservations with mixed results
 and blending would hide a real problem) -- see colors.py for what each
 color means.
+
+Also on the right side, below the Yelp lines: two informational perk
+badges (Virtuoso / breakfast-included), detected by scanning the guest's
+note text (see match/perks.py) -- not match-status signals, so they get
+their own ORANGE color rather than the green/yellow/red/blue scheme, and
+only render when true (per user direction, to avoid cluttering every
+block with a "No" line).
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
 
-from fd_reader.match import MatchResult, NoteCrossCheck, RoomMove, find_room_groups
+from fd_reader.match import (
+    MatchResult,
+    NoteCrossCheck,
+    RoomMove,
+    find_room_groups,
+    is_breakfast_included,
+    is_virtuoso,
+)
 from fd_reader.models import GuestRecord
 from fd_reader.parse_reservations import ReservationRecord
 from fd_reader.report.colors import BLUE, GREEN, RED, YELLOW
@@ -45,6 +59,8 @@ class GuestBlock:
     lines: list[ReservationLine]
     room_move_note: str | None = None
     linked_group_note: str | None = None
+    virtuoso: bool = False
+    breakfast_included: bool = False
 
 
 def _sorted_by_arrival(guests: list[GuestRecord]) -> list[GuestRecord]:
@@ -223,6 +239,8 @@ def build_guest_blocks(
                 lines=lines,
                 room_move_note=_room_move_note(guest, moved_from, moved_to),
                 linked_group_note=_linked_group_note(guest, group_rooms_by_confirmation),
+                virtuoso=is_virtuoso(guest),
+                breakfast_included=is_breakfast_included(guest),
             )
         )
 

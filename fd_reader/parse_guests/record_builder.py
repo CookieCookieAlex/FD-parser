@@ -123,6 +123,7 @@ class RecordBuilder:
         self.guests_count: int | None = None
         self.guests_share: int | None = None
         self.room_type: str | None = None
+        self.rate_plan: str | None = None
         self.confirmation_number: str | None = None
         self.departure_date: str | None = None
         self.fields: dict[str, list[str]] = {}
@@ -141,6 +142,9 @@ class RecordBuilder:
             self.guests_count = int(share_words[0].text)
         if len(share_words) >= 2 and share_words[1].text.isdigit():
             self.guests_share = int(share_words[1].text)
+
+        rate_plan_words = [w for w in row.words if 490 <= w.x0 < 574]
+        self.rate_plan = " ".join(w.text for w in rate_plan_words).strip() or None
 
     def consume_detail_row(self, row: Row) -> None:
         room_type_words = [w for w in row.words if w.x0 < 100]
@@ -197,6 +201,7 @@ class RecordBuilder:
             guests_count=self.guests_count,
             guests_share=self.guests_share,
             source_page=self.source_page,
+            rate_plan=self.rate_plan or "",
             vip_level=joined("vip_level"),
             address=joined("address"),
             preferences=joined("preferences"),

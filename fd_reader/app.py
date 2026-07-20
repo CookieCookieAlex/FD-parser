@@ -35,13 +35,13 @@ from fd_reader.match import (
 )
 from fd_reader.parse_guests import parse_guest_pdf
 from fd_reader.parse_reservations import parse_reservation_pdf
-from fd_reader.report import BLUE, GREEN, RED, YELLOW, GuestBlock, build_guest_blocks
+from fd_reader.report import BLUE, GREEN, ORANGE, RED, YELLOW, GuestBlock, build_guest_blocks
 
 st.set_page_config(page_title="Guest x Yelp Cross-Check", layout="wide")
 
-_COLOR_HEX = {GREEN: "#C6EFCE", YELLOW: "#FFEB9C", RED: "#FFC7CE", BLUE: "#BDD7EE"}
+_COLOR_HEX = {GREEN: "#C6EFCE", YELLOW: "#FFEB9C", RED: "#FFC7CE", BLUE: "#BDD7EE", ORANGE: "#FCD5B4"}
 _COLOR_LABEL = {GREEN: "Matched", YELLOW: "Needs a look", RED: "Mismatch", BLUE: "No reservation"}
-_COLOR_TEXT = {GREEN: "#0F5132", YELLOW: "#664D03", RED: "#842029", BLUE: "#084298"}
+_COLOR_TEXT = {GREEN: "#0F5132", YELLOW: "#664D03", RED: "#842029", BLUE: "#084298", ORANGE: "#7A4A00"}
 
 _LEFT_FIELDS = [
     ("Room", "room_name"),
@@ -49,6 +49,7 @@ _LEFT_FIELDS = [
     ("Arrival", "arrival_date"),
     ("Departure", "departure_date"),
     ("Guests", "guests_count"),
+    ("Rate Plan", "rate_plan"),
 ]
 
 _NOTE_FIELDS = [
@@ -144,6 +145,19 @@ def _render_card(block: GuestBlock) -> None:
                 )
                 if line.reservation is not None and line.reservation.notes_tags:
                     st.caption(f"Notes & Tags: {line.reservation.notes_tags}")
+
+            perk_labels = []
+            if block.virtuoso:
+                perk_labels.append("Virtuoso")
+            if block.breakfast_included:
+                perk_labels.append("Breakfast included")
+            for label in perk_labels:
+                st.markdown(
+                    f"<div style='background:{_COLOR_HEX[ORANGE]}; color:{_COLOR_TEXT[ORANGE]}; "
+                    f"padding:8px 12px; border-radius:6px; margin-bottom:6px;'>"
+                    f"<b>{label}</b></div>",
+                    unsafe_allow_html=True,
+                )
 
 
 def _summary_bar(blocks: list[GuestBlock], room_move_count: int, group_booking_count: int) -> None:

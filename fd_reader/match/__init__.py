@@ -22,8 +22,9 @@ Two independent things happen here, both described in CLAUDE.md's
    disagree; neither exists (no dinner reservation at all, not a problem
    by itself).
 
-Also here: room_groups.py (multi-room family bookings) and room_moves.py
-(same guest, adjacent stays, different room) -- both independent,
+Also here: room_groups.py (multi-room family bookings), room_moves.py
+(same guest, adjacent stays, different room), and perks.py (Virtuoso /
+breakfast-included detection from note text) -- all independent,
 guest-list-only signals that feed into the report alongside the two checks
 above.
 """
@@ -40,6 +41,7 @@ from fd_reader.match.notes_cross_check import (
     NoteCrossCheck,
     cross_check_notes,
 )
+from fd_reader.match.perks import is_breakfast_included, is_virtuoso
 from fd_reader.match.room_groups import RoomGroup, find_room_groups
 from fd_reader.match.room_moves import RoomMove, detect_room_moves
 
@@ -51,6 +53,8 @@ __all__ = [
     "NOTE_FIELDS",
     "NoteCrossCheck",
     "cross_check_notes",
+    "is_breakfast_included",
+    "is_virtuoso",
     "RoomGroup",
     "find_room_groups",
     "RoomMove",

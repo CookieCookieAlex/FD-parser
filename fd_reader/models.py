@@ -14,6 +14,8 @@ class GuestRecord:
     guests_share: int | None
     source_page: int
 
+    rate_plan: str = ""
+
     vip_level: str = ""
     address: str = ""
     preferences: str = ""

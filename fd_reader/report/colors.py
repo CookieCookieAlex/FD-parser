@@ -12,6 +12,9 @@ writer (xlsx_writer.py), and the Streamlit app (fd_reader/app.py).
     what's actually booked in Yelp -- fd_reader.match's "mismatch" status).
   - BLUE   -- nothing to compare at all: no Yelp reservation AND no note
     mention. Not a problem by itself, just informational.
+  - ORANGE -- not a match-status color at all: used only for the perk
+    badges (Virtuoso / breakfast-included) detected from the guest's note
+    text. Informational, shown alongside the Yelp reservation lines.
 """
 from __future__ import annotations
 
@@ -19,5 +22,6 @@ GREEN = "C6EFCE"
 YELLOW = "FFEB9C"
 RED = "FFC7CE"
 BLUE = "BDD7EE"
+ORANGE = "FCD5B4"
 HEADER_FILL = "44546A"
 BLOCK_BORDER_FILL = "D9D9D9"

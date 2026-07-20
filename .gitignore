@@ -1,6 +1,17 @@
 # Real guest PII -- never push this to GitHub, even private.
 guest-notes/
 
+# Test fixtures parse the real PDFs above and assert against real guest
+# names/confirmation numbers as literal strings -- keep these local-only,
+# same reasoning as guest-notes/ above.
+tests/
+
+# Project docs (CLAUDE.md, TODO.md, SESSION_HISTORY.md, etc.) have
+# historically referenced real guest examples while documenting parser
+# behavior -- keep all markdown local-only rather than re-auditing every
+# future edit for PII before it can be pushed.
+*.md
+
 # Python
 .venv/
 __pycache__/

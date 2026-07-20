@@ -14,7 +14,7 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
 from fd_reader.report.blocks import GuestBlock
-from fd_reader.report.colors import BLOCK_BORDER_FILL, BLUE, GREEN, RED, YELLOW
+from fd_reader.report.colors import BLOCK_BORDER_FILL, BLUE, GREEN, ORANGE, RED, YELLOW
 
 _FONT_HEADER = Font(bold=True, color="FFFFFF")
 _FONT_LABEL = Font(bold=True)
@@ -32,6 +32,7 @@ _LEFT_FIELDS = [
     ("Arrival", "arrival_date"),
     ("Departure", "departure_date"),
     ("Guests", "guests_count"),
+    ("Rate Plan", "rate_plan"),
 ]
 
 _LEFT_NOTE_FIELDS = [
@@ -100,6 +101,7 @@ def _write_legend(sheet: Worksheet, row: int) -> int:
         (YELLOW, "Needs a look (missing mention, room/party mismatch, unresolved note)"),
         (RED, "Mismatch (note and Yelp disagree on restaurant/date/room)"),
         (BLUE, "No Yelp reservation and no note mention"),
+        (ORANGE, "Perk badge (Virtuoso / breakfast included)"),
     ]
     for i, (color, label) in enumerate(legend):
         col = 1 + i * 2
@@ -165,6 +167,17 @@ def _write_block(sheet: Worksheet, block: GuestBlock, row: int) -> int:
                 value=f"Notes & Tags: {line.reservation.notes_tags}",
             ).alignment = _WRAP
             right_row += 1
+
+    perk_labels = []
+    if block.virtuoso:
+        perk_labels.append("Virtuoso")
+    if block.breakfast_included:
+        perk_labels.append("Breakfast included")
+    for label in perk_labels:
+        color_cell = sheet.cell(row=right_row, column=right_col, value="  ")
+        color_cell.fill = PatternFill(start_color=ORANGE, end_color=ORANGE, fill_type="solid")
+        sheet.cell(row=right_row, column=right_col + 1, value=label)
+        right_row += 1
 
     end_row = max(field_row, right_row) - 1
     row = end_row + 1
