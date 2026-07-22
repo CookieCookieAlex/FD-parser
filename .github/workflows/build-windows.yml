@@ -1,4 +1,10 @@
 name: Build Windows executable
+# Without this, each run in the Actions tab is titled after whatever
+# commit message triggered it -- run-name is evaluated before checkout,
+# so it can't read fd_reader/__init__.py's __version__ (that's read later,
+# inside the job, for the artifact name below); this keeps the run list
+# readable with the program name instead of the triggering commit message.
+run-name: GuestYelpCheck build
 
 on:
   push:
@@ -28,11 +34,17 @@ jobs:
       - name: Build executable
         run: pyinstaller fd_reader.spec
 
+      - name: Read version
+        id: version
+        run: |
+          $version = (Select-String -Path fd_reader/__init__.py -Pattern '__version__ = "(.+)"').Matches.Groups[1].Value
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+
       - name: Zip the build
-        run: Compress-Archive -Path dist/GuestYelpCheck -DestinationPath GuestYelpCheck-windows.zip
+        run: Compress-Archive -Path dist/GuestYelpCheck -DestinationPath GuestYelpCheck-${{ steps.version.outputs.version }}.zip
 
       - uses: actions/upload-artifact@v4
         with:
-          name: GuestYelpCheck-windows
-          path: GuestYelpCheck-windows.zip
+          name: GuestYelpCheck-${{ steps.version.outputs.version }}
+          path: GuestYelpCheck-${{ steps.version.outputs.version }}.zip
           retention-days: 30

@@ -8,7 +8,17 @@ so card logic and spreadsheet logic can't drift apart.
 from __future__ import annotations
 
 from fd_reader.report.blocks import GuestBlock, ReservationLine, build_guest_blocks
-from fd_reader.report.colors import BLOCK_BORDER_FILL, BLUE, GREEN, HEADER_FILL, ORANGE, RED, YELLOW
+from fd_reader.report.colors import (
+    BLOCK_BORDER_FILL,
+    BLUE,
+    GREEN,
+    HEADER_FILL,
+    ORANGE,
+    RED,
+    YELLOW,
+    severity_rank,
+    worst_color,
+)
 from fd_reader.report.xlsx_writer import write_report
 
 __all__ = [
@@ -22,5 +32,7 @@ __all__ = [
     "ORANGE",
     "RED",
     "YELLOW",
+    "severity_rank",
+    "worst_color",
     "write_report",
 ]

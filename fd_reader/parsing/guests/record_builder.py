@@ -1,13 +1,13 @@
 """Label matching and the per-guest record accumulator for the
 guest-arrivals PDF. See the package docstring
-(fd_reader/parse_guests/__init__.py) for the overall parsing strategy.
+(fd_reader/parsing/guests/__init__.py) for the overall parsing strategy.
 """
 from __future__ import annotations
 
 import re
 
 from fd_reader.models import GuestRecord
-from fd_reader.parse_guests.rows import LABEL_VALUE_BOUNDARY, Row, find_date_word
+from fd_reader.parsing.guests.rows import LABEL_VALUE_BOUNDARY, Row, find_date_word
 
 # Known status words. Anything else is still treated as a valid anchor
 # (so we don't silently drop rows) but is recorded as a parser warning.

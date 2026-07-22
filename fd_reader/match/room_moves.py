@@ -5,7 +5,7 @@ changes but the room type stays the same (e.g. a same-category
 reassignment), it's not treated as a move.
 
 Records are linked, never merged -- confirmation number is per-stay, not
-per-guest (see room_directory.py's module docstring).
+per-guest (see rooms/directory.py's module docstring).
 """
 from __future__ import annotations
 

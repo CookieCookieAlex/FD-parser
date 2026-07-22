@@ -1,5 +1,5 @@
 """Row/word extraction and row-classification helpers for the guest-arrivals
-PDF. See the package docstring (fd_reader/parse_guests/__init__.py) for the
+PDF. See the package docstring (fd_reader/parsing/guests/__init__.py) for the
 overall parsing strategy.
 """
 from __future__ import annotations

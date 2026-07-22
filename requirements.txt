@@ -2,4 +2,4 @@ pdfplumber
 pandas
 openpyxl
 rapidfuzz
-streamlit
+streamlit>=1.32

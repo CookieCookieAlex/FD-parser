@@ -25,8 +25,8 @@ from fd_reader.match import (
     find_room_groups,
     match_reservations,
 )
-from fd_reader.parse_guests import parse_guest_pdf
-from fd_reader.parse_reservations import parse_reservation_pdf
+from fd_reader.parsing.guests import parse_guest_pdf
+from fd_reader.parsing.reservations import parse_reservation_pdf
 from fd_reader.report import build_guest_blocks, write_report
 
 # First-page text markers used to tell an arrivals-report PDF apart from a
@@ -112,12 +112,12 @@ def main(argv: list[str] | None = None) -> int:
     for path in yelp_files:
         reservations.extend(parse_reservation_pdf(path))
 
-    match_results = match_reservations(guests, reservations)
+    room_groups = find_room_groups(guests)
+    match_results = match_reservations(guests, reservations, room_groups)
     note_checks = cross_check_notes(guests, match_results)
     room_moves = detect_room_moves(guests)
-    room_groups = find_room_groups(guests)
 
-    blocks = build_guest_blocks(guests, match_results, note_checks, room_moves)
+    blocks = build_guest_blocks(guests, match_results, note_checks, room_moves, room_groups)
     write_report(
         blocks, args.out,
         room_move_count=len(room_moves),

@@ -1,46 +1,32 @@
-"""Resolve a Yelp `Notes & Tags` room-code hint to a `room_directory.py` Room.
+"""Resolve a Yelp `Notes & Tags` room-code hint to a `rooms/directory.py` Room.
 
-`ReservationRecord.room_code_hint` (see parse_reservations.py) is raw
-leftover text from Notes & Tags after the restaurant keyword and
+`ReservationRecord.room_code_hint` (see parsing/reservations/fields.py) is
+raw leftover text from Notes & Tags after the restaurant keyword and
 outside-guest phrases are stripped -- e.g. "'s AUSABL", "'s lookout lg",
-"S ST ARM SADDLE", "s tamarack lg". Per CLAUDE.md, staff hand-type the
-guest-list room name/abbreviation into Yelp notes as their own manual
-cross-reference, so this is often a better join key than guest name -- but
-the spelling is inconsistent (abbreviated, punctuated, upper/lowercased,
-sometimes with extra words like "lg"/"outside"/allergy notes mixed in)
-against the PMS room codes now in `room_directory.py`.
+"S ST ARM SADDLE", "s tamarack lg". Staff hand-type the guest-list room
+name/abbreviation into Yelp notes as their own manual cross-reference, so
+this is often a better join key than guest name, but the spelling is
+inconsistent against the PMS room codes in `rooms/directory.py`
+(abbreviated, punctuated, upper/lowercased, sometimes with extra words
+like "lg"/"outside"/allergy notes mixed in).
 
-Two real findings from scanning all 14 sample Yelp PDFs' actual hint
-strings (not guessed up front):
-
-  - Almost every hint starts with a stray "'s" or "S " -- the leftover tail
-    of "Artisans'" / "Maggie's" after the restaurant keyword regex strips
-    the keyword itself but not the trailing/leading possessive. Stripped
-    before matching.
-  - Hints are free text, not a clean code -- e.g. "'s MCKEN outside 2 guest
-    have gluten allergy" or "s Marble Ampersand CELIAC" (two room mentions
-    in one hint -- family/adjacent booking, only the first is resolved).
-    Matching must tokenize and check whole words against room abbreviations
-    and full-name words, not do a raw substring search: a raw substring
-    search would false-positive short abbreviations like "S" or fragments
-    inside unrelated words, and would silently mis-resolve things like
-    "Runway" or "Wine Cellar" (real hint text, but NOT any of the 32 rooms
-    in room_directory.py -- these are notes about an off-site
-    venue/activity, not a room).
-
-Expect to keep growing `_KNOWN_MISSPELLINGS` as new hint spellings show up
-in future exports, per CLAUDE.md.
+Matching tokenizes and checks whole words against room abbreviations and
+full-name words rather than a raw substring search, which would
+false-positive short abbreviations like "S" and would silently mis-resolve
+non-room text like "Runway"/"Wine Cellar" that isn't one of the 32 rooms in
+rooms/directory.py. See CLAUDE.md for the full room-alias background;
+expect to keep growing `_KNOWN_MISSPELLINGS` as new hint spellings show up.
 """
 from __future__ import annotations
 
 import re
 
-from fd_reader.room_directory import ROOMS, Room
+from fd_reader.rooms.directory import ROOMS, Room
 
 # Leftover possessive fragments from "Artisans'"/"Maggie's" that
-# _extract_room_code_hint() (parse_reservations.py) doesn't strip, since it
-# only strips the "artisan"/"maggie" keyword itself, not the surrounding
-# apostrophe-s. Stripped as a leading token before word-matching.
+# extract_room_code_hint() (parsing/reservations/fields.py) doesn't strip,
+# since it only strips the "artisan"/"maggie" keyword itself, not the
+# surrounding apostrophe-s. Stripped as a leading token before word-matching.
 _LEADING_NOISE_RE = re.compile(r"^'?s\b\s*", re.IGNORECASE)
 
 # Spellings seen in real Notes & Tags text that don't tokenize cleanly to
@@ -52,11 +38,10 @@ _KNOWN_MISSPELLINGS: dict[str, str] = {
     "HEARTHIDE": "HEARTH",  # "'s Hearthide ..." -> Hearthside
     "AUSABLE": "AUSABL",    # "s ausable would like outside" -> Ausable
     "TAMARACK": "TAMAR",    # "s tamarack lg" -> Tamarac
-    "STARM": "STARM",       # already matches, kept for clarity
 }
 
 # Non-room venues/activities that legitimately show up in Notes & Tags but
-# are NOT one of the 32 rooms in room_directory.py -- confirmed by checking
+# are NOT one of the 32 rooms in rooms/directory.py -- confirmed by checking
 # these tokens don't appear anywhere else in the project as a room
 # reference. Listed so a future word-match near-miss doesn't get silently
 # mapped to the wrong room; these should always resolve to no match.

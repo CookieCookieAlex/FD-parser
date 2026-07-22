@@ -1,27 +1,22 @@
 """Compare what a guest's free-text notes say about restaurant reservations
-against what Yelp actually shows for that guest (fd_reader.parse_notes
-extracts the mentions). Covers all four cases: note mentions a reservation
-Yelp doesn't have; Yelp has a reservation the notes don't mention; both
-exist but the date/time disagree; neither exists (no dinner reservation at
-all, not a problem by itself).
+against what Yelp actually shows for that guest. Covers four cases: note
+mentions a reservation Yelp doesn't have; Yelp has a reservation the notes
+don't mention; both exist but the date/time disagree; neither exists.
 
-The weekday-only notes (one staff member's all-caps style, e.g. "FRIDAY
-ARTISANS 7PM") can be genuinely ambiguous on a long stay (the weekday occurs
-more than once in the stay window -- see parse_notes.py). Per the user,
-this ambiguity should be resolved using the guest's actual Yelp
-reservations: if exactly one of the note's candidate_dates has a matching
-Yelp reservation (same restaurant, same guest) that resolves the ambiguity
-outright instead of leaving it permanently unresolved.
+Weekday-only notes (e.g. "FRIDAY ARTISANS 7PM") can be ambiguous on a long
+stay if the weekday occurs more than once in the window (see parse_notes.py)
+-- resolved here using the guest's actual Yelp reservations when exactly one
+candidate date has a matching reservation.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from fd_reader.match._dates import parse_source_date
+from fd_reader.match._dates import note_time_matches, parse_source_date
 from fd_reader.match.name_matching import MatchResult
 from fd_reader.models import GuestRecord
-from fd_reader.parse_notes import NoteMention, extract_note_mentions
-from fd_reader.parse_reservations import ReservationRecord
+from fd_reader.parsing.notes import NoteMention, extract_note_mentions
+from fd_reader.parsing.reservations import ReservationRecord
 
 NOTE_FIELDS = ("guest_notes", "reservation_notes", "comments_notes")
 
@@ -31,17 +26,13 @@ class NoteCrossCheck:
     guest: GuestRecord
     mention: NoteMention | None
     reservation: ReservationRecord | None
-    status: str  # "matched" / "note_without_reservation" / "reservation_without_note" / "mismatch"
+    status: str  # "matched" / "note_without_reservation" / "reservation_without_note" / "mismatch" / "time_mismatch"
     detail: str = ""
 
 
 def _resolve_ambiguous_mention(
     mention: NoteMention, guest_reservations: list[ReservationRecord]
 ) -> NoteMention:
-    """If a weekday mention was ambiguous (occurs more than once in the
-    stay), narrow it down using the guest's actual matched Yelp
-    reservations: if exactly one candidate date has a same-restaurant
-    reservation, that's the real date."""
     if not mention.is_ambiguous_weekday or not mention.candidate_dates:
         return mention
 
@@ -104,21 +95,32 @@ def _check_mention(
             if parse_source_date(reservation.source_date) != mention.resolved_date:
                 continue
             used_reservations.add(id(reservation))
+            # Same restaurant + date, but if the note actually names a time
+            # and it disagrees with Yelp's, that's worth a flag rather than
+            # silently calling it a clean match -- if the note has no
+            # parseable time at all, there's nothing to compare, so it
+            # stays a clean match.
+            if mention.time_text and not note_time_matches(mention.time_text, reservation.time):
+                return NoteCrossCheck(
+                    guest=guest, mention=mention, reservation=reservation, status="time_mismatch",
+                    detail=(
+                        f"Guest Notes says {mention.time_text} for {mention.restaurant} on "
+                        f"{mention.resolved_date}, but the Yelp reservation on file is at "
+                        f"{reservation.time} -- please verify"
+                    ),
+                )
             return NoteCrossCheck(guest=guest, mention=mention, reservation=reservation, status="matched")
 
-        # No exact (restaurant + date) match -- before giving up, check
-        # whether this looks like a human-entry mismatch rather than a true
-        # absence: same date but a different restaurant booked (e.g. note
-        # says "artisans on 6/28" but the guest's actual Yelp reservation
-        # that day is at Maggie's), which is worth surfacing distinctly
-        # since it's likely staff error, not a missing reservation.
+        # No exact match -- check for a likely staff entry error (same date,
+        # different restaurant / same restaurant, different date) before
+        # concluding the reservation is simply missing.
         conflicting = _find_same_date_other_restaurant(mention, guest_reservations, used_reservations)
         if conflicting is not None:
             used_reservations.add(id(conflicting))
             return NoteCrossCheck(
                 guest=guest, mention=mention, reservation=conflicting, status="mismatch",
                 detail=(
-                    f"note says {mention.restaurant} on {mention.resolved_date}, but the "
+                    f"Guest Notes says {mention.restaurant} on {mention.resolved_date}, but the "
                     f"Yelp reservation found on that date is at {conflicting.restaurant} "
                     f"instead -- likely a note entry error, needs staff review"
                 ),
@@ -130,21 +132,16 @@ def _check_mention(
             return NoteCrossCheck(
                 guest=guest, mention=mention, reservation=conflicting, status="mismatch",
                 detail=(
-                    f"note says {mention.restaurant} on {mention.resolved_date}, but the "
+                    f"Guest Notes says {mention.restaurant} on {mention.resolved_date}, but the "
                     f"guest's Yelp reservation at {conflicting.restaurant} is on "
                     f"{conflicting.source_date} instead -- likely a note entry error, "
                     f"needs staff review"
                 ),
             )
 
-    if mention.resolved_date is None and mention.flags:
-        return NoteCrossCheck(
-            guest=guest, mention=mention, reservation=None, status="note_without_reservation",
-            detail=f"note could not be resolved to a date: {mention.flags}",
-        )
     return NoteCrossCheck(
         guest=guest, mention=mention, reservation=None, status="note_without_reservation",
-        detail="no matching Yelp reservation found for this note mention",
+        detail="",
     )
 
 

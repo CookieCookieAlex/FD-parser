@@ -2,29 +2,20 @@
 the xlsx writer (xlsx_writer.py) and the Streamlit app (fd_reader/app.py),
 so card logic and spreadsheet logic can't drift apart.
 
-Layout, per user direction: one visual BLOCK per guest (every guest, full
-roster, arrival-date order) -- not a flat spreadsheet row. Each block pairs:
+One block per guest (full roster, arrival-date order), pairing:
+  - the guest-list side: confirmation ID, room, dates, guest count, and
+    all three raw note fields, always shown in full.
+  - the Yelp side: one ReservationLine per matched reservation, or a
+    placeholder line if there's no Yelp reservation at all.
 
-  - the guest-list side: confirmation ID, room, room type, arrival,
-    departure, guest count, and all three raw note fields (Guest Notes /
-    Reservation Notes / Comments-Notes) -- always shown in full, even when
-    there's nothing to flag, so staff can eyeball the original note next
-    to what the tool found.
-  - the Yelp side: one ReservationLine per matched reservation (date, time,
-    party size, guest name, Notes & Tags), OR a single placeholder line if
-    the guest has no Yelp reservation at all.
+Each Yelp-side line gets its own color + note (not one blended color per
+guest, since mixed results on one guest would otherwise hide a real
+problem) -- see colors.py for what each color means.
 
-Each Yelp-side line gets its own color + short note (not one blended color
-per guest, since a guest can have several reservations with mixed results
-and blending would hide a real problem) -- see colors.py for what each
-color means.
-
-Also on the right side, below the Yelp lines: two informational perk
-badges (Virtuoso / breakfast-included), detected by scanning the guest's
-note text (see match/perks.py) -- not match-status signals, so they get
-their own ORANGE color rather than the green/yellow/red/blue scheme, and
-only render when true (per user direction, to avoid cluttering every
-block with a "No" line).
+Also shown: perk badges (Virtuoso / breakfast-included / pet amenities,
+match/perks.py) in ORANGE since they're informational, not match-status;
+and an optional RED over-capacity warning (match/capacity_check.py) when
+guests_count exceeds the room's max_guests.
 """
 from __future__ import annotations
 
@@ -34,13 +25,16 @@ from datetime import datetime
 from fd_reader.match import (
     MatchResult,
     NoteCrossCheck,
+    RoomGroup,
     RoomMove,
+    check_capacity,
     find_room_groups,
     is_breakfast_included,
+    is_pet_amenities,
     is_virtuoso,
 )
 from fd_reader.models import GuestRecord
-from fd_reader.parse_reservations import ReservationRecord
+from fd_reader.parsing.reservations import ReservationRecord
 from fd_reader.report.colors import BLUE, GREEN, RED, YELLOW
 
 
@@ -61,6 +55,13 @@ class GuestBlock:
     linked_group_note: str | None = None
     virtuoso: bool = False
     breakfast_included: bool = False
+    pet_amenities: bool = False
+    capacity_note: str | None = None
+    # Only ever set by app_ui/pipeline.py (not by build_guest_blocks below,
+    # and not read by the .xlsx writer) -- see pipeline.py's
+    # _flag_duplicate_confirmation_numbers for why this needs to live on
+    # the Streamlit-app side rather than here.
+    duplicate_id_note: str | None = None
 
 
 def _sorted_by_arrival(guests: list[GuestRecord]) -> list[GuestRecord]:
@@ -76,19 +77,45 @@ def _sorted_by_arrival(guests: list[GuestRecord]) -> list[GuestRecord]:
 def _line_status(
     result: MatchResult, related_checks: list[NoteCrossCheck]
 ) -> tuple[str, str]:
-    mismatch_checks = [c for c in related_checks if c.status == "mismatch"]
+    mismatch_checks = [c for c in related_checks if c.status in ("mismatch", "time_mismatch")]
     matched_checks = [c for c in related_checks if c.status == "matched"]
     without_note_checks = [c for c in related_checks if c.status == "reservation_without_note"]
 
     if mismatch_checks:
         return RED, mismatch_checks[0].detail
 
+    if "surname_only_no_room_hint" in result.flags:
+        return RED, (
+            "Potential outside guest: matched by last name only, no first name or "
+            "room found in the Yelp notes -- could be a different person who "
+            "happens to share this guest's last name. Please verify."
+        )
+
+    if "ambiguous_name_match" in result.flags:
+        other_names = ", ".join(g.guest_name for g in result.other_candidates)
+        return RED, (
+            f"Ambiguous match: could also belong to {other_names} (same/similar name, "
+            f"also in-house that night, no room hint or note time to tell them apart). "
+            f"Attached here as the closest name match -- please verify."
+        )
+
     notes: list[str] = []
     color = GREEN
+
+    if "resolved_by_note_time" in result.flags:
+        other_names = ", ".join(g.guest_name for g in result.other_candidates)
+        color = YELLOW
+        notes.append(
+            f"Name match was ambiguous ({other_names} also plausible), resolved using "
+            f"a matching time in this guest's notes -- please verify."
+        )
 
     if "room_mismatch" in result.flags:
         color = YELLOW
         notes.append("Room in Yelp note disagrees with guest's actual room.")
+    if "no_room_hint" in result.flags:
+        color = YELLOW
+        notes.append("No room found in the Yelp notes for this reservation.")
     if "party_size_mismatch" in result.flags:
         color = YELLOW
         notes.append(
@@ -97,12 +124,12 @@ def _line_status(
         )
     if without_note_checks and not matched_checks:
         color = YELLOW
-        notes.append("Reservation found in Yelp but not mentioned in any guest note field.")
+        notes.append("Reservation found in Yelp but not mentioned in Guest Notes.")
 
     if not notes:
         notes.append("Matched cleanly.")
 
-    return color, " ".join(notes)
+    return color, "\n".join(notes)
 
 
 def _build_lines(
@@ -124,19 +151,24 @@ def _build_lines(
         color, note = _line_status(result, related_checks)
         lines.append(ReservationLine(color=color, note=note, reservation=reservation))
 
-    # Note mentions that never resolved to any Yelp reservation at all
-    # (no MatchResult exists for them) -- e.g. Guest H's ambiguous
-    # Maggie's mention with nothing to disambiguate against.
+    # Note mentions that never resolved to any Yelp reservation at all.
     for check in unresolved_checks:
-        lines.append(
-            ReservationLine(
-                color=YELLOW,
-                note=f"Note mentions {check.mention.restaurant} but no matching Yelp reservation found ({check.detail}).",
-                reservation=None,
-            )
-        )
+        note = f"Guest Notes mentions {check.mention.restaurant} but no matching Yelp reservation found."
+        if check.detail:
+            note = f"{note[:-1]} ({check.detail})."
+        lines.append(ReservationLine(color=YELLOW, note=note, reservation=None))
 
     return lines
+
+
+def _capacity_note(guest: GuestRecord) -> str | None:
+    check = check_capacity(guest)
+    if check is None:
+        return None
+    return (
+        f"Guest count exceeds room capacity: {check.actual_guests} guests booked, "
+        f"but {guest.room_name} sleeps {check.max_guests} max."
+    )
 
 
 def _room_move_note(guest: GuestRecord, moved_from: dict, moved_to: dict) -> str | None:
@@ -173,19 +205,16 @@ def _linked_group_note(
 
 
 def _group_rooms_by_confirmation(
-    guests: list[GuestRecord],
+    groups: list[RoomGroup],
 ) -> dict[str, tuple[list[tuple[str, str | None]], str]]:
-    """Computed once so every block in a group gets the pointer note, not
-    just the record that happened to hold the matched reservation (see
-    find_room_groups' docstring -- e.g. Guest B's 3 rooms). The
-    reservation itself still only ever shows on its own confirmation ID's
-    block; this is purely a "look at the sibling room" pointer.
-    (room_name, other_guest_name_or_None) -- the guest name is only
-    included for same_surname groups, where the other room belongs to a
-    DIFFERENT person (e.g. "Guest Y"), not shown for exact_name groups
-    where it'd just repeat this guest's own name."""
+    """Computed once so every block in a group gets the "look at the
+    sibling room" pointer note, not just the record holding the matched
+    reservation. (room_name, other_guest_name_or_None) -- the guest name
+    is only included for same_surname groups, where the other room
+    belongs to a different person; omitted for exact_name groups where
+    it'd just repeat this guest's own name."""
     result: dict[str, tuple[list[tuple[str, str | None]], str]] = {}
-    for group in find_room_groups(guests):
+    for group in groups:
         for record in group.records:
             other_rooms = [
                 (
@@ -204,8 +233,16 @@ def build_guest_blocks(
     match_results: list[MatchResult],
     note_checks: list[NoteCrossCheck],
     room_moves: list[RoomMove],
+    groups: list[RoomGroup] | None = None,
 ) -> list[GuestBlock]:
-    """Assemble one GuestBlock per guest, arrival-date order."""
+    """Assemble one GuestBlock per guest, arrival-date order.
+
+    `groups` lets a caller that's already computed find_room_groups(guests)
+    (e.g. for match_reservations or a group-booking count) pass it in
+    instead of recomputing it here."""
+    if groups is None:
+        groups = find_room_groups(guests)
+
     results_by_guest: dict[str, list[MatchResult]] = {}
     for result in match_results:
         if result.guest is not None:
@@ -221,7 +258,7 @@ def build_guest_blocks(
         moved_from[move.earlier.confirmation_number] = move
         moved_to[move.later.confirmation_number] = move
 
-    group_rooms_by_confirmation = _group_rooms_by_confirmation(guests)
+    group_rooms_by_confirmation = _group_rooms_by_confirmation(groups)
 
     blocks: list[GuestBlock] = []
 
@@ -241,6 +278,8 @@ def build_guest_blocks(
                 linked_group_note=_linked_group_note(guest, group_rooms_by_confirmation),
                 virtuoso=is_virtuoso(guest),
                 breakfast_included=is_breakfast_included(guest),
+                pet_amenities=is_pet_amenities(guest),
+                capacity_note=_capacity_note(guest),
             )
         )
 

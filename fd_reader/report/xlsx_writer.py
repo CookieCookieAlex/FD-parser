@@ -14,11 +14,12 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
 from fd_reader.report.blocks import GuestBlock
-from fd_reader.report.colors import BLOCK_BORDER_FILL, BLUE, GREEN, ORANGE, RED, YELLOW
+from fd_reader.report.colors import BLOCK_BORDER_FILL, BLUE, GREEN, ORANGE, RED, YELLOW, worst_color
 
 _FONT_HEADER = Font(bold=True, color="FFFFFF")
 _FONT_LABEL = Font(bold=True)
 _FONT_TITLE = Font(bold=True, size=12)
+_FONT_GUEST_NAME = Font(bold=True, size=16)
 _WRAP = Alignment(wrap_text=True, vertical="top")
 
 LEFT_COL_COUNT = 9  # label + value pairs render across these columns
@@ -79,11 +80,7 @@ def _write_summary(
     total = len(blocks)
     color_counts = {GREEN: 0, YELLOW: 0, RED: 0, BLUE: 0}
     for block in blocks:
-        colors = {line.color for line in block.lines}
-        for color in (RED, YELLOW, BLUE, GREEN):
-            if color in colors:
-                color_counts[color] += 1
-                break
+        color_counts[worst_color(line.color for line in block.lines)] += 1
 
     sheet.cell(row=row, column=1, value="Guest x Yelp Reservation Cross-Check").font = _FONT_TITLE
     sheet.cell(row=row + 1, column=1, value=(
@@ -99,9 +96,9 @@ def _write_legend(sheet: Worksheet, row: int) -> int:
     legend = [
         (GREEN, "Matched cleanly"),
         (YELLOW, "Needs a look (missing mention, room/party mismatch, unresolved note)"),
-        (RED, "Mismatch (note and Yelp disagree on restaurant/date/room)"),
+        (RED, "Mismatch (note and Yelp disagree on restaurant/date/time, or ambiguous match)"),
         (BLUE, "No Yelp reservation and no note mention"),
-        (ORANGE, "Perk badge (Virtuoso / breakfast included)"),
+        (ORANGE, "Perk badge (Virtuoso / breakfast included / pet amenities)"),
     ]
     for i, (color, label) in enumerate(legend):
         col = 1 + i * 2
@@ -116,7 +113,7 @@ def _write_block(sheet: Worksheet, block: GuestBlock, row: int) -> int:
     start_row = row
 
     title_cell = sheet.cell(row=row, column=1, value=guest.guest_name)
-    title_cell.font = _FONT_TITLE
+    title_cell.font = _FONT_GUEST_NAME
     row += 1
 
     if block.room_move_note:
@@ -135,6 +132,13 @@ def _write_block(sheet: Worksheet, block: GuestBlock, row: int) -> int:
     for label, attr in _LEFT_NOTE_FIELDS:
         sheet.cell(row=field_row, column=1, value=label).font = _FONT_LABEL
         cell = sheet.cell(row=field_row, column=2, value=getattr(guest, attr) or "")
+        cell.alignment = _WRAP
+        field_row += 1
+
+    if block.capacity_note:
+        cell = sheet.cell(row=field_row, column=1, value=block.capacity_note)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color=RED, end_color=RED, fill_type="solid")
         cell.alignment = _WRAP
         field_row += 1
 
@@ -173,6 +177,8 @@ def _write_block(sheet: Worksheet, block: GuestBlock, row: int) -> int:
         perk_labels.append("Virtuoso")
     if block.breakfast_included:
         perk_labels.append("Breakfast included")
+    if block.pet_amenities:
+        perk_labels.append("Pet amenities")
     for label in perk_labels:
         color_cell = sheet.cell(row=right_row, column=right_col, value="  ")
         color_cell.fill = PatternFill(start_color=ORANGE, end_color=ORANGE, fill_type="solid")
@@ -180,14 +186,13 @@ def _write_block(sheet: Worksheet, block: GuestBlock, row: int) -> int:
         right_row += 1
 
     end_row = max(field_row, right_row) - 1
-    row = end_row + 1
 
-    for r in range(start_row, row + 1):
+    for r in range(start_row, end_row + 1):
         sheet.cell(row=r, column=LEFT_COL_COUNT + 1).fill = PatternFill(
             start_color=BLOCK_BORDER_FILL, end_color=BLOCK_BORDER_FILL, fill_type="solid"
         )
 
-    return row
+    return end_row + 1
 
 
 def _set_column_widths(sheet: Worksheet) -> None:

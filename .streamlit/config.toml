@@ -1,0 +1,16 @@
+# Dark-only theme -- a single [theme] section (not [theme.light]/
+# [theme.dark]) locks the app to one mode and removes the in-app
+# Light/Dark/System picker entirely, so there's no theme switch to track
+# and no light-mode styling to keep in sync.
+[theme]
+backgroundColor = "#2B2F36"
+secondaryBackgroundColor = "#23262B"
+textColor = "#E8E8E8"
+primaryColor = "#EF4444"
+borderColor = "#4A505A"
+
+greenColor = "#4ADE80"
+yellowColor = "#FBBF24"
+redColor = "#F87171"
+blueColor = "#60A5FA"
+orangeColor = "#FDBA74"

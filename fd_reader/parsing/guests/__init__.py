@@ -1,27 +1,10 @@
 """Parser for the guest-arrivals PDF ("Arrivals with Details").
 
-This is not a table -- it's a label-anchored form, one variable-length block
-per guest. See CLAUDE.md for the full structure notes. Strategy:
-
-1. Extract words per page with pdfplumber, keep (x0, x1, top, bottom, text)
-   (rows.py).
-2. Group words into rows by `top` (words on the same printed line share a
-   `top` within a small tolerance) (rows.py).
-3. Drop boilerplate rows -- the repeated page header/footer/column-header
-   text that appears on every page at (roughly) the same `top` bands
-   (rows.py).
-4. Walk the remaining rows. A row is a new-record anchor when it has a
-   `Reserved` (or other status word) in the status column and an
-   MM/DD/YYYY date in the arrival-date column. Everything between one
-   anchor and the next belongs to that guest's record.
-5. Within a record: the row right after the anchor carries room type,
-   confirmation number, and departure date. Subsequent rows are either
-   `Stay Date (Days)` rows (skipped -- redundant with arrival/departure)
-   or right-aligned label/value rows (`VIP Level:`, `Address:`,
-   `Guest Notes:`, etc.) whose label sits in a narrow column ending
-   around x1=158 and whose value starts around x0=163 (record_builder.py).
-6. State (current record, current label being continued) carries across
-   page boundaries, since notes can span a page break with no new anchor.
+Not a table -- a label-anchored form, one variable-length block per guest.
+rows.py extracts/groups words into rows and drops boilerplate; a row is a
+new-record anchor when it has a status word and an MM/DD/YYYY arrival date.
+record_builder.py accumulates everything between one anchor and the next
+into a GuestRecord, including state that carries across page breaks.
 """
 from __future__ import annotations
 
@@ -30,8 +13,8 @@ import re
 import pdfplumber
 
 from fd_reader.models import GuestRecord
-from fd_reader.parse_guests.record_builder import RecordBuilder, match_label
-from fd_reader.parse_guests.rows import (
+from fd_reader.parsing.guests.record_builder import RecordBuilder, match_label
+from fd_reader.parsing.guests.rows import (
     LABEL_VALUE_BOUNDARY,
     Row,
     extract_rows,
