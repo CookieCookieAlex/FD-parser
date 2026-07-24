@@ -25,6 +25,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+from fd_reader.match._dates import parse_mmddyyyy
 from fd_reader.match import (
     MatchResult,
     NoteCrossCheck,
@@ -40,6 +41,7 @@ from fd_reader.match import (
 from fd_reader.models import GuestRecord
 from fd_reader.parsing.reservations import ReservationRecord
 from fd_reader.report.colors import BLUE, GREEN, RED, YELLOW
+from fd_reader.util import group_by
 
 
 @dataclass
@@ -77,10 +79,7 @@ class GuestBlock:
 
 def _sorted_by_arrival(guests: list[GuestRecord]) -> list[GuestRecord]:
     def key(g: GuestRecord):
-        try:
-            return datetime.strptime(g.arrival_date.strip(), "%m/%d/%Y")
-        except (ValueError, AttributeError):
-            return datetime.max
+        return parse_mmddyyyy(g.arrival_date) or datetime.max.date()
 
     return sorted(guests, key=key)
 
@@ -269,14 +268,11 @@ def build_guest_blocks(
     if groups is None:
         groups = find_room_groups(guests)
 
-    results_by_guest: dict[str, list[MatchResult]] = {}
-    for result in match_results:
-        if result.guest is not None:
-            results_by_guest.setdefault(result.guest.confirmation_number, []).append(result)
-
-    checks_by_guest: dict[str, list[NoteCrossCheck]] = {}
-    for check in note_checks:
-        checks_by_guest.setdefault(check.guest.confirmation_number, []).append(check)
+    results_by_guest = group_by(
+        (r for r in match_results if r.guest is not None),
+        lambda r: r.guest.confirmation_number,
+    )
+    checks_by_guest = group_by(note_checks, lambda c: c.guest.confirmation_number)
 
     moved_from: dict[str, RoomMove] = {}
     moved_to: dict[str, RoomMove] = {}

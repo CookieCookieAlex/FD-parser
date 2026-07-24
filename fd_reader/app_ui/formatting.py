@@ -4,8 +4,8 @@ so these are testable without a running app.
 from __future__ import annotations
 
 import re
-from datetime import datetime
 
+from fd_reader.match._dates import parse_mmddyyyy
 from fd_reader.report import GuestBlock, worst_color
 from fd_reader.rooms.aliases import resolve_room_code_hint
 
@@ -22,10 +22,9 @@ def format_time_12h(time_text: str) -> str:
 def nights_stayed(guest) -> str:
     """Departure minus arrival (standard hotel convention: Mon->Wed is 2
     nights, not 3). Returns "" if either date is missing/unparseable."""
-    try:
-        arrival = datetime.strptime(guest.arrival_date.strip(), "%m/%d/%Y")
-        departure = datetime.strptime(guest.departure_date.strip(), "%m/%d/%Y")
-    except (ValueError, AttributeError):
+    arrival = parse_mmddyyyy(guest.arrival_date)
+    departure = parse_mmddyyyy(guest.departure_date)
+    if arrival is None or departure is None:
         return ""
     nights = (departure - arrival).days
     return str(nights) if nights >= 0 else ""

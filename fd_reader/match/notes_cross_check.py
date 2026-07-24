@@ -14,11 +14,9 @@ from dataclasses import dataclass
 
 from fd_reader.match._dates import note_time_matches, parse_source_date
 from fd_reader.match.name_matching import MatchResult
-from fd_reader.models import GuestRecord
+from fd_reader.models import NOTE_FIELDS, GuestRecord
 from fd_reader.parsing.notes import NoteMention, extract_note_mentions
 from fd_reader.parsing.reservations import ReservationRecord
-
-NOTE_FIELDS = ("guest_notes", "reservation_notes", "comments_notes")
 
 
 @dataclass

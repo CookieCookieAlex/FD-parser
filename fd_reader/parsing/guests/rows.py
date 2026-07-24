@@ -1,63 +1,39 @@
 """Row/word extraction and row-classification helpers for the guest-arrivals
 PDF. See the package docstring (fd_reader/parsing/guests/__init__.py) for the
-overall parsing strategy.
+overall parsing strategy. Word/Row/extract_rows live in parsing/_pdf_rows.py,
+shared with parsing/reservations/rows.py.
 """
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+
+from fd_reader.parsing._pdf_rows import Row, Word, extract_rows
+
+__all__ = [
+    "Row", "Word", "extract_rows",
+    "is_boilerplate", "find_status_word", "find_date_word",
+    "is_stay_date_row", "is_record_anchor",
+    "DATE_RE", "LABEL_VALUE_BOUNDARY",
+    "COL_ROOM", "COL_NAME_OR_CONFIRMATION", "COL_STATUS",
+    "COL_ARRIVAL_OR_DEPARTURE", "COL_GUESTS_SHARE", "COL_RATE_PLAN",
+]
 
 DATE_RE = re.compile(r"^\d{2}/\d{2}/\d{4}$")
-CONFIRMATION_RE = re.compile(r"^\d+-\d+$")
-
-# Row grouping tolerance: words on the same printed line can differ in
-# `top` by a point or two due to font metrics.
-ROW_TOP_TOLERANCE = 2.0
 
 # x0 boundary between the right-aligned label column and its value column
 # (see CLAUDE.md: labels end ~158, values start ~163).
 LABEL_VALUE_BOUNDARY = 160.0
 
-
-@dataclass
-class Word:
-    text: str
-    x0: float
-    x1: float
-    top: float
-    bottom: float
-
-
-@dataclass
-class Row:
-    words: list[Word]
-    top: float
-
-    def text_in_range(self, x0: float | None = None, x1: float | None = None) -> str:
-        selected = [
-            w
-            for w in self.words
-            if (x0 is None or w.x0 >= x0) and (x1 is None or w.x0 < x1)
-        ]
-        return " ".join(w.text for w in selected)
-
-
-def extract_rows(page) -> list[Row]:
-    words = [
-        Word(w["text"], w["x0"], w["x1"], w["top"], w["bottom"])
-        for w in page.extract_words(use_text_flow=False, keep_blank_chars=False)
-    ]
-    words.sort(key=lambda w: (w.top, w.x0))
-
-    rows: list[Row] = []
-    for w in words:
-        if rows and abs(w.top - rows[-1].top) <= ROW_TOP_TOLERANCE:
-            rows[-1].words.append(w)
-        else:
-            rows.append(Row(words=[w], top=w.top))
-    for row in rows:
-        row.words.sort(key=lambda w: w.x0)
-    return rows
+# x0 column bands on the anchor/detail rows, confirmed against real sample
+# PDFs. Room name (anchor row) and room type (detail row) share a column,
+# as do guest name (anchor row) and confirmation number (detail row) --
+# same x0 range, different row.
+COL_ROOM = (0, 100)
+COL_NAME_OR_CONFIRMATION = (100, 235)
+COL_STATUS = (235, 330)
+COL_ARRIVAL_OR_DEPARTURE = (325, 430)
+COL_GUESTS_SHARE = (435, 460)
+COL_RATE_PLAN = (490, 574)
 
 
 def is_boilerplate(row: Row) -> bool:
@@ -83,7 +59,7 @@ def is_boilerplate(row: Row) -> bool:
 
 def find_status_word(row: Row) -> str | None:
     for w in row.words:
-        if 235 <= w.x0 <= 330 and w.text not in ("", None):
+        if COL_STATUS[0] <= w.x0 <= COL_STATUS[1] and w.text not in ("", None):
             return w.text
     return None
 
@@ -103,7 +79,7 @@ def is_stay_date_row(row: Row) -> bool:
 def is_record_anchor(row: Row) -> tuple[str, str] | None:
     """Return (status, arrival_date) if this row starts a new guest record."""
     status = find_status_word(row)
-    arrival = find_date_word(row, 325, 430)
+    arrival = find_date_word(row, *COL_ARRIVAL_OR_DEPARTURE)
     if status and arrival:
         return status, arrival
     return None

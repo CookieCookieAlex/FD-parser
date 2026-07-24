@@ -20,15 +20,11 @@ from rapidfuzz import fuzz
 
 from fd_reader.match._dates import note_time_matches, parse_mmddyyyy, parse_source_date
 from fd_reader.match.room_groups import RoomGroup, find_room_groups, group_for_guest
+from fd_reader.models import NOTE_FIELDS as _NOTE_FIELDS
 from fd_reader.models import GuestRecord
 from fd_reader.parsing.notes import extract_note_mentions
 from fd_reader.parsing.reservations import ReservationRecord
 from fd_reader.rooms.aliases import resolve_room_code_hint
-
-# Same three GuestRecord free-text fields notes_cross_check.py scans;
-# duplicated here (not imported) to avoid a circular import, since
-# notes_cross_check.py imports MatchResult from this module.
-_NOTE_FIELDS = ("guest_notes", "reservation_notes", "comments_notes")
 
 # Below this rapidfuzz token_sort_ratio score, a name pair is not
 # considered a candidate match at all.

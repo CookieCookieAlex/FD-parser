@@ -6,6 +6,7 @@
 # future edit for PII before it can be pushed.
 *.md
 !README.md
+!how_to_use.md
 
 # Python
 .venv/

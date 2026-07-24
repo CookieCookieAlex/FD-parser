@@ -20,7 +20,6 @@ from fd_reader.app_ui import (
     _load_from_uploads,
     _mtime_fingerprint,
     _run_pipeline,
-    block_worst_color as _block_worst_color,
     configure_page,
     main,
 )

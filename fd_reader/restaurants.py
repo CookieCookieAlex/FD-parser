@@ -11,3 +11,14 @@ RESTAURANT_KEYWORDS = {
     "artisan": "Artisans",  # covers "artisans"/"Artison" typo family too loosely on purpose
     "maggie": "Maggie's",
 }
+
+
+def find_restaurant(text: str) -> str | None:
+    """First RESTAURANT_KEYWORDS match in `text` (case-insensitive), or
+    None. Shared by parsing/notes and parsing/reservations/fields.py so
+    both sides of the match resolve a restaurant name the same way."""
+    lowered = text.lower()
+    for keyword, name in RESTAURANT_KEYWORDS.items():
+        if keyword in lowered:
+            return name
+    return None

@@ -24,7 +24,7 @@ from fd_reader.parsing.notes.dates import (
     parse_stay_date,
     resolve_weekday,
 )
-from fd_reader.restaurants import RESTAURANT_KEYWORDS
+from fd_reader.restaurants import find_restaurant
 
 __all__ = ["NoteMention", "extract_note_mentions"]
 
@@ -94,12 +94,7 @@ def extract_note_mentions(
         restaurant_match = _RESTAURANT_SPAN_RE.search(entry)
         if not restaurant_match:
             continue
-        lowered = entry.lower()
-        restaurant = None
-        for keyword, name in RESTAURANT_KEYWORDS.items():
-            if keyword in lowered:
-                restaurant = name
-                break
+        restaurant = find_restaurant(entry)
         if restaurant is None:
             continue
 

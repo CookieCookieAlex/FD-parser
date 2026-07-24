@@ -19,8 +19,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from fd_reader.match.notes_cross_check import NOTE_FIELDS
-from fd_reader.models import GuestRecord
+from fd_reader.models import GuestRecord, all_notes_text
 from fd_reader.rooms.directory import by_abbreviation
 
 # Tolerant of the real staff phrasing variants seen for "please put an
@@ -53,12 +52,8 @@ class SofaBedCheck:
     satisfied: bool  # True: room has a sofa bed. False: requested but room doesn't have one.
 
 
-def _all_notes_text(guest: GuestRecord) -> str:
-    return " ".join(getattr(guest, field) or "" for field in NOTE_FIELDS)
-
-
 def requests_sofa_bed(guest: GuestRecord) -> bool:
-    return bool(SOFA_BED_REQUEST_RE.search(_all_notes_text(guest)))
+    return bool(SOFA_BED_REQUEST_RE.search(all_notes_text(guest)))
 
 
 def check_sofa_bed(guest: GuestRecord) -> SofaBedCheck | None:

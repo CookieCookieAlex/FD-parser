@@ -8,7 +8,7 @@ import glob
 import os
 import tempfile
 
-from fd_reader.app import _block_worst_color, _load_from_uploads, _mtime_fingerprint, _run_pipeline
+from fd_reader.app_ui import _load_from_uploads, _mtime_fingerprint, _run_pipeline, block_worst_color
 from fd_reader.report import BLUE, GREEN, RED, YELLOW
 
 from tests_synthetic.pdf_writer import build_synthetic_arrivals_pdf, build_synthetic_yelp_pdfs
@@ -83,10 +83,10 @@ def test_block_worst_color_picks_most_severe():
             ReservationLine(color=YELLOW, note="hmm"),
         ],
     )
-    assert _block_worst_color(block) == YELLOW
+    assert block_worst_color(block) == YELLOW
 
     block.lines.append(ReservationLine(color=RED, note="bad"))
-    assert _block_worst_color(block) == RED
+    assert block_worst_color(block) == RED
 
 
 def test_block_worst_color_all_green_stays_green():
@@ -96,7 +96,7 @@ def test_block_worst_color_all_green_stays_green():
         guest_name = "Test"
 
     block = GuestBlock(guest=FakeGuest(), lines=[ReservationLine(color=GREEN, note="fine")])
-    assert _block_worst_color(block) == GREEN
+    assert block_worst_color(block) == GREEN
 
 
 def test_block_worst_color_blue_only():
@@ -106,7 +106,7 @@ def test_block_worst_color_blue_only():
         guest_name = "Test"
 
     block = GuestBlock(guest=FakeGuest(), lines=[ReservationLine(color=BLUE, note="none")])
-    assert _block_worst_color(block) == BLUE
+    assert block_worst_color(block) == BLUE
 
 
 def test_mtime_fingerprint_changes_when_file_is_resaved():

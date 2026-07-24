@@ -12,7 +12,7 @@ from fd_reader.app_ui.content import (
     FIELD_LABEL_STYLE,
     FIELD_VALUE_STYLE,
     LEFT_FIELD_ROWS,
-    NOTE_FIELDS,
+    NOTE_FIELD_LABELS,
     NOTE_TEXT_STYLE,
     THIN_DIVIDER,
 )
@@ -116,10 +116,7 @@ def _card_bar(container_key: str, state_key: str, guest_name: str, worst: str, b
             st.html(_HEADER_BADGE_CSS.format(key=badge_key))
             st.badge(COLOR_LABEL[worst], color=COLOR_BADGE[worst])
     with button_col:
-        # Matched cards start collapsed -- they're the everyday case with
-        # nothing to check, so staff only expand one to double-check it
-        # rather than scrolling past a full expanded card for every guest.
-        collapsed = circle_toggle_button(state_key, default_collapsed=(worst == GREEN))
+        collapsed = circle_toggle_button(state_key, default_collapsed=False)
     if collapsed:
         st.html(_COLLAPSED_CARD_CSS.format(card_key=container_key))
     return collapsed
@@ -189,11 +186,11 @@ def render_card(block: GuestBlock, index: int) -> None:
                     if block.sofa_bed_requested:
                         st.badge("Sofa bed requested", color="orange")
 
-            has_notes = any(getattr(guest, attr) for _, attr in NOTE_FIELDS)
+            has_notes = any(getattr(guest, attr) for _, attr in NOTE_FIELD_LABELS)
             if has_perks and has_notes:
                 st.markdown(THIN_DIVIDER, unsafe_allow_html=True)
 
-            for label, attr in NOTE_FIELDS:
+            for label, attr in NOTE_FIELD_LABELS:
                 value = getattr(guest, attr)
                 if value:
                     st.markdown(f"<div style='{FIELD_LABEL_STYLE}'>{label}</div>", unsafe_allow_html=True)

@@ -13,6 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from fd_reader.models import GuestRecord
+from fd_reader.util import group_by
 
 
 @dataclass
@@ -48,10 +49,9 @@ def _surname(guest_name: str) -> str:
 
 
 def find_room_groups(guests: list[GuestRecord]) -> list[RoomGroup]:
-    exact_key_to_records: dict[tuple[str, str, str], list[GuestRecord]] = {}
-    for guest in guests:
-        key = (guest.guest_name.strip().lower(), guest.arrival_date, guest.departure_date)
-        exact_key_to_records.setdefault(key, []).append(guest)
+    exact_key_to_records = group_by(
+        guests, lambda g: (g.guest_name.strip().lower(), g.arrival_date, g.departure_date)
+    )
 
     groups: list[RoomGroup] = []
     grouped_confirmations: set[str] = set()
@@ -63,12 +63,10 @@ def find_room_groups(guests: list[GuestRecord]) -> list[RoomGroup]:
     # Same surname + same dates, different first name -- only consider
     # guests not already claimed by an exact-name group above, so a
     # 3-room exact-name family isn't also re-grouped here.
-    surname_key_to_records: dict[tuple[str, str, str], list[GuestRecord]] = {}
-    for guest in guests:
-        if guest.confirmation_number in grouped_confirmations:
-            continue
-        key = (_surname(guest.guest_name), guest.arrival_date, guest.departure_date)
-        surname_key_to_records.setdefault(key, []).append(guest)
+    surname_key_to_records = group_by(
+        (g for g in guests if g.confirmation_number not in grouped_confirmations),
+        lambda g: (_surname(g.guest_name), g.arrival_date, g.departure_date),
+    )
 
     for records in surname_key_to_records.values():
         # Require at least two DISTINCT first names -- if it's the same

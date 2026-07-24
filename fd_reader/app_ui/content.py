@@ -26,7 +26,9 @@ LEFT_FIELD_ROWS = [
     [("Arrival", "arrival_date"), ("Departure", "departure_date"), ("Guests", "guests_count")],
 ]
 
-NOTE_FIELDS = [
+# Display order + labels for the three GuestRecord note fields (see
+# models.NOTE_FIELDS for the plain field-name tuple these attrs come from).
+NOTE_FIELD_LABELS = [
     ("Guest Notes", "guest_notes"),
     ("Reservation Notes", "reservation_notes"),
     ("Comments / Notes", "comments_notes"),

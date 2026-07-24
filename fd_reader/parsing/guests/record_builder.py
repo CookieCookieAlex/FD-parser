@@ -7,7 +7,16 @@ from __future__ import annotations
 import re
 
 from fd_reader.models import GuestRecord
-from fd_reader.parsing.guests.rows import LABEL_VALUE_BOUNDARY, Row, find_date_word
+from fd_reader.parsing.guests.rows import (
+    COL_ARRIVAL_OR_DEPARTURE,
+    COL_GUESTS_SHARE,
+    COL_NAME_OR_CONFIRMATION,
+    COL_RATE_PLAN,
+    COL_ROOM,
+    LABEL_VALUE_BOUNDARY,
+    Row,
+    find_date_word,
+)
 
 # Known status words. Anything else is still treated as a valid anchor
 # (so we don't silently drop rows) but is recorded as a parser warning.
@@ -131,32 +140,27 @@ class RecordBuilder:
         self.warnings: list[str] = []
 
     def consume_anchor_row(self, row: Row) -> None:
-        room_words = [w for w in row.words if w.x0 < 100]
-        self.room_name = " ".join(w.text for w in room_words).strip() or None
+        self.room_name = row.text_in(COL_ROOM).strip() or None
+        self.guest_name = row.text_in(COL_NAME_OR_CONFIRMATION).strip()
 
-        name_words = [w for w in row.words if 100 <= w.x0 < 235]
-        self.guest_name = " ".join(w.text for w in name_words).strip()
-
-        share_words = [w for w in row.words if 435 <= w.x0 <= 460 and w.text != "/"]
+        share_words = [w for w in row.words_in(COL_GUESTS_SHARE) if w.text != "/"]
         if len(share_words) >= 1 and share_words[0].text.isdigit():
             self.guests_count = int(share_words[0].text)
         if len(share_words) >= 2 and share_words[1].text.isdigit():
             self.guests_share = int(share_words[1].text)
 
-        rate_plan_words = [w for w in row.words if 490 <= w.x0 < 574]
-        self.rate_plan = " ".join(w.text for w in rate_plan_words).strip() or None
+        self.rate_plan = row.text_in(COL_RATE_PLAN).strip() or None
 
     def consume_detail_row(self, row: Row) -> None:
-        room_type_words = [w for w in row.words if w.x0 < 100]
-        if room_type_words:
-            self.room_type = " ".join(w.text for w in room_type_words).strip()
+        room_type_text = row.text_in(COL_ROOM).strip()
+        if room_type_text:
+            self.room_type = room_type_text
 
-        conf_words = [w for w in row.words if 100 <= w.x0 < 235]
-        conf_text = " ".join(w.text for w in conf_words).strip()
+        conf_text = row.text_in(COL_NAME_OR_CONFIRMATION).strip()
         if conf_text:
             self.confirmation_number = conf_text
 
-        self.departure_date = find_date_word(row, 325, 430)
+        self.departure_date = find_date_word(row, *COL_ARRIVAL_OR_DEPARTURE)
 
     def append_field_text(self, field: str, text: str) -> None:
         if not text:

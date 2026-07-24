@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import re
 
-from fd_reader.restaurants import RESTAURANT_KEYWORDS
+from fd_reader.restaurants import RESTAURANT_KEYWORDS, find_restaurant
 
 # Seen in Notes & Tags for reservations that aren't tied to any in-house
 # guest at all (e.g. "Guest R -- artisans off property no allergies").
@@ -19,11 +19,7 @@ _SHORTHAND_TOKENS = {"gh", "hg", "lm", "ek", "sz"}
 
 
 def derive_restaurant(notes_tags: str) -> str | None:
-    lowered = notes_tags.lower()
-    for keyword, restaurant in RESTAURANT_KEYWORDS.items():
-        if keyword in lowered:
-            return restaurant
-    return None
+    return find_restaurant(notes_tags)
 
 
 def is_outside_guest(notes_tags: str) -> bool:

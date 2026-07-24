@@ -1,7 +1,8 @@
 """Word/row extraction and boilerplate filtering for the Yelp reservations
 PDF -- the same word-coordinate -> row grouping approach as
-parsing/guests/rows.py, tuned to Yelp's column bands and page furniture
-(page title, footer, filter bar) instead of the arrivals report's.
+parsing/guests/rows.py (shared via parsing/_pdf_rows.py), tuned to Yelp's
+column bands and page furniture (page title, footer, filter bar) instead of
+the arrivals report's.
 
 See CLAUDE.md's "Yelp for Business reservations PDF" section for the exact
 pixel layout this was reverse-engineered from.
@@ -9,7 +10,15 @@ pixel layout this was reverse-engineered from.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+
+from fd_reader.parsing._pdf_rows import Row, Word, extract_rows
+
+__all__ = [
+    "Row", "Word", "extract_rows",
+    "TIME_RE", "PHONE_RE", "COL_TIME", "COL_PARTY", "COL_GUEST", "COL_NOTES",
+    "find_date_from_filter_bar", "is_boilerplate", "footer_start_top",
+    "is_reservation_start_row", "parse_party_size",
+]
 
 TIME_RE = re.compile(r"^\d{1,2}:\d{2}$")
 PHONE_RE = re.compile(r"^\(\d{3}\)$")
@@ -19,48 +28,6 @@ COL_TIME = (40, 95)
 COL_PARTY = (100, 145)
 COL_GUEST = (170, 270)
 COL_NOTES = (275, 355)
-
-ROW_TOP_TOLERANCE = 2.0
-
-
-@dataclass
-class Word:
-    text: str
-    x0: float
-    x1: float
-    top: float
-    bottom: float
-
-
-@dataclass
-class Row:
-    words: list[Word]
-    top: float
-
-    def text_in(self, band: tuple[float, float]) -> str:
-        selected = [w for w in self.words if band[0] <= w.x0 < band[1]]
-        return " ".join(w.text for w in selected)
-
-    def words_in(self, band: tuple[float, float]) -> list[Word]:
-        return [w for w in self.words if band[0] <= w.x0 < band[1]]
-
-
-def extract_rows(page) -> list[Row]:
-    words = [
-        Word(w["text"], w["x0"], w["x1"], w["top"], w["bottom"])
-        for w in page.extract_words(use_text_flow=False, keep_blank_chars=False)
-    ]
-    words.sort(key=lambda w: (w.top, w.x0))
-
-    rows: list[Row] = []
-    for w in words:
-        if rows and abs(w.top - rows[-1].top) <= ROW_TOP_TOLERANCE:
-            rows[-1].words.append(w)
-        else:
-            rows.append(Row(words=[w], top=w.top))
-    for row in rows:
-        row.words.sort(key=lambda w: w.x0)
-    return rows
 
 
 def find_date_from_filter_bar(rows: list[Row]) -> str | None:

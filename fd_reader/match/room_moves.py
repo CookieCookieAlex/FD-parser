@@ -12,6 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from fd_reader.models import GuestRecord
+from fd_reader.util import group_by
 
 
 @dataclass
@@ -22,9 +23,7 @@ class RoomMove:
 
 
 def detect_room_moves(guests: list[GuestRecord]) -> list[RoomMove]:
-    by_name: dict[str, list[GuestRecord]] = {}
-    for guest in guests:
-        by_name.setdefault(guest.guest_name.strip().lower(), []).append(guest)
+    by_name = group_by(guests, lambda g: g.guest_name.strip().lower())
 
     moves: list[RoomMove] = []
     for records in by_name.values():
