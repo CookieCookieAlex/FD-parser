@@ -5,6 +5,7 @@
 # behavior -- keep all markdown local-only rather than re-auditing every
 # future edit for PII before it can be pushed.
 *.md
+!README.md
 
 # Python
 .venv/

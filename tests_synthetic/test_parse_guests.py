@@ -170,14 +170,14 @@ def test_is_boilerplate_header_rows():
 # --- End-to-end synthetic-PDF tests ----------------------------------------
 
 
-def test_synthetic_pdf_parses_all_twelve_guests():
+def test_synthetic_pdf_parses_all_fourteen_guests():
     records = parse_guest_pdf(SYNTHETIC_PDF)
-    assert len(records) == 12
+    assert len(records) == 14
     names = {r.guest_name for r in records}
     assert names == {
         "Jackson, John", "Sheeran, Steve", "Depp, Emma", "Depp, Olivia",
         "Hanks, Laura", "Swift, Michael", "Bieber, Daniel",
-        "Clarkson, Olivia", "Cyrus, Sophia",
+        "Clarkson, Olivia", "Cyrus, Sophia", "Turner, Grace", "Wilson, Henry",
     }
 
 

@@ -13,6 +13,13 @@ to flag guest counts that exceed it: 5 for Buck (2 kings + pull-out sofa),
 and all 6 Lakeside rooms, 2 for everything else (single king, no sofa).
 None means capacity isn't confirmed -- no check runs for those rooms.
 
+has_sofa_bed is a separate flag from max_guests>2 -- Kiwassa/Lookout also
+sleep 4 but via two kings, not a sofa, so it can't be derived from
+max_guests alone. True for Buck, every Lake View cabin (Hawk/Marble/
+Ampersand/Tahawas/Mckenzie/Rondeau/Mt. Marcy), and all 6 Lakeside rooms.
+Used by match/sofa_bed_check.py to cross-reference a guest's note-text
+sofa-bed REQUEST against whether their actual room has one.
+
 `abbreviation`/`room_type_code` are filled in only where directly observed
 in the sample PDFs; everything else is None until confirmed.
 """
@@ -31,34 +38,35 @@ class Room:
     key_number: str | None = None
     phone_number: str | None = None
     max_guests: int | None = None
+    has_sofa_bed: bool = False
 
 
 ROOMS: list[Room] = [
     # --- Cabins ---
     Room(full_name="Buck", category="Cabins", abbreviation="BUCK", room_type_code="2KKF",
          room_type_desc="Two Bedroom King/King Cabin-LakeFront",
-         key_number=None, phone_number=None, max_guests=5),
+         key_number=None, phone_number=None, max_guests=5, has_sofa_bed=True),
     Room(full_name="Hawk", category="Cabins", abbreviation="HAWK", room_type_code="1KV",
          room_type_desc="One Bedroom King Cabin-Lake View",
-         key_number=None, phone_number=None, max_guests=3),
+         key_number=None, phone_number=None, max_guests=3, has_sofa_bed=True),
     Room(full_name="Kiwassa", category="Cabins", abbreviation="KIWA", room_type_code="2KTV",
          room_type_desc="Two Bedroom King/Two Twins Cabin-Lake View",
          key_number=None, phone_number=None, max_guests=4),
     Room(full_name="Marble", category="Cabins", abbreviation="MARBLE", room_type_code="1KV",
          room_type_desc="One Bedroom King Cabin-Lake View",
-         key_number=None, phone_number=None, max_guests=3),
+         key_number=None, phone_number=None, max_guests=3, has_sofa_bed=True),
     Room(full_name="Lookout", category="Cabins", abbreviation="LOOK", room_type_code="2KTV",
          room_type_desc="Two Bedroom King/Two Twins Cabin-Lake View",
          key_number=None, phone_number=None, max_guests=4),
     Room(full_name="Ampersand", category="Cabins", abbreviation="AMPER", room_type_code="1KV",
          room_type_desc="One Bedroom King Cabin-Lake View",
-         key_number=None, phone_number=None, max_guests=3),
+         key_number=None, phone_number=None, max_guests=3, has_sofa_bed=True),
     Room(full_name="Tahawas", category="Cabins", abbreviation="TAHAW", room_type_code="1KV",
          room_type_desc="One Bedroom King Cabin-Lake View",
-         key_number=None, phone_number=None, max_guests=3),
+         key_number=None, phone_number=None, max_guests=3, has_sofa_bed=True),
     Room(full_name="Mckenzie", category="Cabins", abbreviation="MCKEN", room_type_code="1KV",
          room_type_desc="One Bedroom King Cabin-Lake View",
-         key_number=None, phone_number=None, max_guests=3),
+         key_number=None, phone_number=None, max_guests=3, has_sofa_bed=True),
     Room(full_name="St. Armand", category="Cabins", abbreviation="STARM", room_type_code="1KF",
          room_type_desc="One Bedroom King Cabin-LakeFront",
          key_number=None, phone_number=None, max_guests=2),
@@ -67,7 +75,7 @@ ROOMS: list[Room] = [
          key_number=None, phone_number=None, max_guests=2),
     Room(full_name="Rondeau", category="Cabins", abbreviation="ROND", room_type_code="1KV",
          room_type_desc="One Bedroom King Cabin-Lake View",
-         key_number=None, phone_number=None, max_guests=3),
+         key_number=None, phone_number=None, max_guests=3, has_sofa_bed=True),
     Room(full_name="Eagles", category="Cabins", abbreviation="EAGLES", room_type_code="1KF",
          room_type_desc="One Bedroom King Cabin-LakeFront",
          key_number=None, phone_number=None, max_guests=2),
@@ -85,7 +93,7 @@ ROOMS: list[Room] = [
          key_number=None, phone_number=None, max_guests=2),
     Room(full_name="Mt. Marcy", category="Cabins", abbreviation="MTMARCY", room_type_code="1KV",
          room_type_desc="One Bedroom King Cabin-Lake View",
-         key_number=None, phone_number=None, max_guests=3),
+         key_number=None, phone_number=None, max_guests=3, has_sofa_bed=True),
     Room(full_name="Mt. Jo", category="Cabins", abbreviation="MTJO", room_type_code="1KV",
          room_type_desc="One Bedroom King Cabin-Lake View",
          key_number=None, phone_number=None, max_guests=2),
@@ -96,22 +104,22 @@ ROOMS: list[Room] = [
     # --- Lakeside ---
     Room(full_name="Placid", category="Lakeside", abbreviation="PLACID", room_type_code="LU1KF",
          room_type_desc="Upper Level One Bedroom King Suite-Lakeside",
-         key_number=None, phone_number=None, max_guests=3),
+         key_number=None, phone_number=None, max_guests=3, has_sofa_bed=True),
     Room(full_name="Ausable", category="Lakeside", abbreviation="AUSABL", room_type_code="LU1KF",
          room_type_desc="Upper Level One Bedroom King Suite-Lakeside",
-         key_number=None, phone_number=None, max_guests=3),
+         key_number=None, phone_number=None, max_guests=3, has_sofa_bed=True),
     Room(full_name="Raquette", category="Lakeside", abbreviation="RAQTTE", room_type_code="L1KF",
          room_type_desc="One Bedroom King Suite-Lakeside",
-         key_number=None, phone_number=None, max_guests=3),
+         key_number=None, phone_number=None, max_guests=3, has_sofa_bed=True),
     Room(full_name="Cascade", category="Lakeside", abbreviation="CASCDE", room_type_code="L1KF",
          room_type_desc="One Bedroom King Suite-Lakeside",
-         key_number=None, phone_number=None, max_guests=3),
+         key_number=None, phone_number=None, max_guests=3, has_sofa_bed=True),
     Room(full_name="Stillwater", category="Lakeside", abbreviation="STLWTR", room_type_code="LL1KF",
          room_type_desc="Lower Level One Bedroom King Suite-Lakeside",
-         key_number=None, phone_number=None, max_guests=3),
+         key_number=None, phone_number=None, max_guests=3, has_sofa_bed=True),
     Room(full_name="Loon", category="Lakeside", abbreviation="LOON", room_type_code="LL1KF",
          room_type_desc="Lower Level One Bedroom King Suite-Lakeside",
-         key_number=None, phone_number=None, max_guests=3),
+         key_number=None, phone_number=None, max_guests=3, has_sofa_bed=True),
 
     # --- Main Lodge ---
     Room(full_name="Tamarac", category="Main Lodge", abbreviation="TAMAR", room_type_code="MKV",

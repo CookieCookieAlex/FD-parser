@@ -142,6 +142,13 @@ def _write_block(sheet: Worksheet, block: GuestBlock, row: int) -> int:
         cell.alignment = _WRAP
         field_row += 1
 
+    if block.sofa_bed_alert:
+        cell = sheet.cell(row=field_row, column=1, value=block.sofa_bed_alert)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color=RED, end_color=RED, fill_type="solid")
+        cell.alignment = _WRAP
+        field_row += 1
+
     right_row = row
     right_col = RIGHT_START_COL
     sheet.cell(row=right_row, column=right_col, value="Yelp Reservations").font = _FONT_LABEL
@@ -179,6 +186,8 @@ def _write_block(sheet: Worksheet, block: GuestBlock, row: int) -> int:
         perk_labels.append("Breakfast included")
     if block.pet_amenities:
         perk_labels.append("Pet amenities")
+    if block.sofa_bed_requested:
+        perk_labels.append("Sofa bed requested")
     for label in perk_labels:
         color_cell = sheet.cell(row=right_row, column=right_col, value="  ")
         color_cell.fill = PatternFill(start_color=ORANGE, end_color=ORANGE, fill_type="solid")

@@ -50,24 +50,13 @@ _BIG_BUTTON_CSS = """
 </style>
 """
 
-# "Show only" (multiselect) and "Sort by" (selectbox) labels + selected-
-# option text bumped up a bit -- these aren't part of the "starting part"
-# +5px pass or the +3px button pass, just a smaller standalone bump per
-# user follow-up, so it gets its own scoped block instead of reusing
-# either constant above.
+# "Sort by" (selectbox) label + selected-option text bumped up a bit --
+# not part of the "starting part" +5px pass or the +3px button pass, just
+# a smaller standalone bump per user follow-up.
 _FILTER_SORT_CSS = """
 <style>
 .st-key-filter-sort-row label p { font-size: 17px !important; }
 .st-key-filter-sort-row [data-baseweb="select"] * { font-size: 16px !important; }
-.st-key-filter-sort-row span[data-baseweb="tag"] * { font-size: 14px !important; }
-/* "Clear all" (x) icon in the "Show only" multiselect sits right next to
-   the dropdown-open chevron by default -- close enough that a click aimed
-   at the chevron can land on "clear all" instead and wipe the filter.
-   DOM under [data-baseweb=select]: div > div (icon row, 2 children) >
-   svg[title=Clear all], svg[title=open] -- first svg is "clear all". */
-.st-key-filter-sort-row [data-baseweb="select"] > div > div > svg:first-child {
-    margin-right: 10px !important;
-}
 </style>
 """
 
@@ -154,17 +143,24 @@ def main() -> None:
     st.divider()
 
     with st.container(key="filter-sort-row"):
-        filter_col, sort_col = st.columns([3, 1])
-        with filter_col:
-            filter_choice = st.multiselect(
-                "Show only:",
-                options=[GREEN, YELLOW, RED, BLUE],
-                default=[GREEN, YELLOW, RED, BLUE],
-                format_func=lambda c: COLOR_LABEL[c],
-            )
-        with sort_col:
-            sort_choice = st.selectbox("Sort by:", options=_SORT_OPTIONS)
-    search = st.text_input("Search guest name")
+        # Individual toggle pills instead of a multiselect dropdown -- each
+        # status is its own on/off button (red outline = shown, gray =
+        # hidden), so there's no dropdown to open and no "clear all" (x)
+        # to misclick, unlike the multiselect this replaced.
+        filter_choice = st.pills(
+            "Show only:",
+            options=[GREEN, YELLOW, RED, BLUE],
+            selection_mode="multi",
+            default=[GREEN, YELLOW, RED, BLUE],
+            format_func=lambda c: COLOR_LABEL[c],
+        ) or []
+        # Search only ever holds a short guest name -- a fixed narrow width
+        # instead of stretching the full row width like every other control.
+        # Sort by sits directly under it, same narrow column, not sharing a
+        # row -- both are "narrow, secondary" controls next to the wide
+        # Show only pill row above.
+        search = st.text_input("Search guest name", width=260)
+        sort_choice = st.selectbox("Sort by:", options=_SORT_OPTIONS, width=260)
 
     filtered = [
         (index, block)

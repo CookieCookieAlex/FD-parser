@@ -14,8 +14,11 @@ problem) -- see colors.py for what each color means.
 
 Also shown: perk badges (Virtuoso / breakfast-included / pet amenities,
 match/perks.py) in ORANGE since they're informational, not match-status;
-and an optional RED over-capacity warning (match/capacity_check.py) when
-guests_count exceeds the room's max_guests.
+an optional RED over-capacity warning (match/capacity_check.py) when
+guests_count exceeds the room's max_guests; and an optional sofa-bed
+signal (match/sofa_bed_check.py) when a note field requests one --
+ORANGE "Sofa bed requested" badge if the assigned room has one, RED alert
+if it doesn't (a real staff action item, likely needs a room move).
 """
 from __future__ import annotations
 
@@ -28,6 +31,7 @@ from fd_reader.match import (
     RoomGroup,
     RoomMove,
     check_capacity,
+    check_sofa_bed,
     find_room_groups,
     is_breakfast_included,
     is_pet_amenities,
@@ -57,6 +61,13 @@ class GuestBlock:
     breakfast_included: bool = False
     pet_amenities: bool = False
     capacity_note: str | None = None
+    # True when a note field requests a sofa bed AND the assigned room has
+    # one -- shown as an informational badge alongside virtuoso/breakfast/
+    # pet_amenities above. When requested but the room does NOT have one,
+    # this stays False and sofa_bed_alert (below) is set instead -- the two
+    # are mutually exclusive by construction (see _sofa_bed_signals).
+    sofa_bed_requested: bool = False
+    sofa_bed_alert: str | None = None
     # Only ever set by app_ui/pipeline.py (not by build_guest_blocks below,
     # and not read by the .xlsx writer) -- see pipeline.py's
     # _flag_duplicate_confirmation_numbers for why this needs to live on
@@ -171,6 +182,21 @@ def _capacity_note(guest: GuestRecord) -> str | None:
     )
 
 
+def _sofa_bed_signals(guest: GuestRecord) -> tuple[bool, str | None]:
+    """(sofa_bed_requested, sofa_bed_alert) -- mutually exclusive: a
+    satisfied request sets the first, an unsatisfied one sets the second,
+    no request found leaves both False/None."""
+    check = check_sofa_bed(guest)
+    if check is None:
+        return False, None
+    if check.satisfied:
+        return True, None
+    return False, (
+        f"Sofa bed requested but {guest.room_name} doesn't have one -- "
+        f"likely needs a room move before arrival."
+    )
+
+
 def _room_move_note(guest: GuestRecord, moved_from: dict, moved_to: dict) -> str | None:
     if guest.confirmation_number in moved_from:
         move = moved_from[guest.confirmation_number]
@@ -270,6 +296,8 @@ def build_guest_blocks(
         if not lines:
             lines = [ReservationLine(color=BLUE, note="No Yelp reservation and no note mention.")]
 
+        sofa_bed_requested, sofa_bed_alert = _sofa_bed_signals(guest)
+
         blocks.append(
             GuestBlock(
                 guest=guest,
@@ -280,6 +308,8 @@ def build_guest_blocks(
                 breakfast_included=is_breakfast_included(guest),
                 pet_amenities=is_pet_amenities(guest),
                 capacity_note=_capacity_note(guest),
+                sofa_bed_requested=sofa_bed_requested,
+                sofa_bed_alert=sofa_bed_alert,
             )
         )
 

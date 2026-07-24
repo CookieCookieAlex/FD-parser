@@ -100,11 +100,14 @@ def _label_row(pdf, top, label, value):
 
 
 def build_synthetic_arrivals_pdf(path: str) -> None:
-    """8 fake guests covering: a clean match, a blank room name
+    """14 fake guests covering: a clean match, a blank room name
     (missing_room_name), a same-surname group, a 3-room exact-name group, a
     Virtuoso + breakfast-typo perk guest, a 2-record room move, a
-    weekday-only note, and a multi-entry (blank-line separated)
-    Comments/Notes guest."""
+    weekday-only note, a multi-entry (blank-line separated) Comments/Notes
+    guest, and two dedicated sofa-bed-request guests (one in a room that
+    has one, one in a room that doesn't) -- on top of the sofa-bed
+    requests folded into the Swift/Bieber records above using different
+    phrasing (rollaway/extra bed vs. the literal "sofa bed" here)."""
     pdf = SyntheticPdf()
     top = 20.0
 
@@ -152,6 +155,9 @@ def build_synthetic_arrivals_pdf(path: str) -> None:
 
     # 8. Swift, Michael -- Virtuoso + real BREAKFAST INCLLUDED typo, in
     # Reservation Notes (matches CLAUDE.md's documented real example shape).
+    # Also a sofa-bed request in Comments/Notes, in a room that DOES have
+    # one (BUCK is the 2-king + pull-out sofa cabin) -- the "satisfied"
+    # badge case for match/sofa_bed_check.py.
     _anchor_row(pdf, top, "BUCK", "Swift", "Michael", "Reserved", "07/10/2026", 2, 0, "VIRTUO")
     advance()
     _detail_row(pdf, top, "2KKF", "SYN-1008-1", "07/12/2026")
@@ -160,13 +166,19 @@ def build_synthetic_arrivals_pdf(path: str) -> None:
         pdf, top, "Reservation Notes:",
         "BREAKFAST INCLLUDED VIRTUOSO $100.00 VIRTUOSO CREDIT",
     )
+    advance()
+    _label_row(pdf, top, "Comments / Notes:", "Guest requested a sofa bed for their child.")
     advance(20)
 
     # 9-10. Bieber, Daniel -- room move: MOSS(1KF) -> BIRCH(SBKP), departure
-    # of the first record exactly equals arrival of the second.
+    # of the first record exactly equals arrival of the second. Also a
+    # sofa-bed request in a room that DOESN'T have one (MOSS is a LakeFront
+    # cabin, single king only) -- match/sofa_bed_check.py's red-alert case.
     _anchor_row(pdf, top, "MOSS", "Bieber", "Daniel", "Reserved", "07/10/2026", 2, 0, "LEIS")
     advance()
     _detail_row(pdf, top, "1KF", "SYN-1009-1", "07/12/2026")
+    advance()
+    _label_row(pdf, top, "Guest Notes:", "Requesting a rollaway bed for their child.")
     advance(20)
 
     _anchor_row(pdf, top, "BIRCH", "Bieber", "Daniel", "Reserved", "07/12/2026", 2, 0, "LEIS")
@@ -195,6 +207,27 @@ def build_synthetic_arrivals_pdf(path: str) -> None:
     pdf.new_page()
     top = 30.0
     pdf.add_wrapped_row("PET AMENITIES FOR RETIRED GUIDE DOG", 165, top)
+    advance()
+
+    # 13. Turner, Grace -- literal "sofa bed" request, in RAQTTE (a
+    # Lakeside room, has_sofa_bed=True) -- the "satisfied" case, distinct
+    # from Swift/Michael above (different room/phrasing) so both real
+    # match/sofa_bed_check.py outcomes have more than one covering guest.
+    _anchor_row(pdf, top, "RAQTTE", "Turner", "Grace", "Reserved", "07/10/2026", 2, 0, "LEIS")
+    advance()
+    _detail_row(pdf, top, "L1KF", "SYN-1013-1", "07/12/2026")
+    advance()
+    _label_row(pdf, top, "Comments / Notes:", "Requesting a sofa bed for the room.")
+    advance(20)
+
+    # 14. Wilson, Henry -- literal "sofa bed" request, in TAMAR (Main
+    # Lodge, has_sofa_bed=False) -- the "needs a room move" red-alert case.
+    _anchor_row(pdf, top, "TAMAR", "Wilson", "Henry", "Reserved", "07/10/2026", 2, 0, "LEIS")
+    advance()
+    _detail_row(pdf, top, "MKV", "SYN-1014-1", "07/12/2026")
+    advance()
+    _label_row(pdf, top, "Guest Notes:", "Guest asked for a sofa bed if available.")
+    advance(20)
 
     pdf.save(path)
 

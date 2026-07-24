@@ -158,6 +158,8 @@ def render_card(block: GuestBlock, index: int) -> None:
         # the single loudest signal on the card.
         if block.capacity_note:
             st.error(block.capacity_note, icon="🚨")
+        if block.sofa_bed_alert:
+            st.error(block.sofa_bed_alert, icon="🛋️")
 
         body_container = st.container(key=f"body-cols-{card_key}")
         with body_container:
@@ -173,7 +175,9 @@ def render_card(block: GuestBlock, index: int) -> None:
             if nights:
                 _field_row([("Nights", nights)])
 
-            has_perks = block.virtuoso or block.breakfast_included or block.pet_amenities
+            has_perks = (
+                block.virtuoso or block.breakfast_included or block.pet_amenities or block.sofa_bed_requested
+            )
             if has_perks:
                 with st.container(horizontal=True):
                     if block.virtuoso:
@@ -182,6 +186,8 @@ def render_card(block: GuestBlock, index: int) -> None:
                         st.badge("Breakfast included", color="orange")
                     if block.pet_amenities:
                         st.badge("Pet amenities", color="orange")
+                    if block.sofa_bed_requested:
+                        st.badge("Sofa bed requested", color="orange")
 
             has_notes = any(getattr(guest, attr) for _, attr in NOTE_FIELDS)
             if has_perks and has_notes:

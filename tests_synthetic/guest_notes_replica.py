@@ -18,14 +18,17 @@ never real guest IDs. Real room codes and rate plans are used
 (fd_reader/rooms/directory.py) where it matters; other values are
 placeholders.
 
-8 guests total, covering: a clean baseline match, a blank room name with
+13 guests total, covering: a clean baseline match, a blank room name with
 room type still set (the "missing_room_name" flag case from CLAUDE.md),
 all 3 note fields (Guest Notes / Reservation Notes / Comments-Notes)
 including the real Virtuoso + "BREAKFAST INCLLUDED" typo and the ALL-CAPS
 weekday-only note style, a note mentioning a reservation the Yelp side
 won't have, an unusual (non-"Reserved") status, a 2-record room move, a
-2-room exact-name group booking, and a weekday note that's genuinely
-ambiguous over a long stay (both Fridays fall inside the window).
+2-room exact-name group booking, a weekday note that's genuinely
+ambiguous over a long stay (both Fridays fall inside the window), and two
+sofa-bed-request cases (match/sofa_bed_check.py): one in a room that has
+one (satisfied, orange badge) and one in a room that doesn't (unsatisfied,
+red alert -- likely needs a room move).
 
 IMPORTANT layout constraint discovered while building this: the real
 parser (fd_reader/parsing/guests/__init__.py) treats whatever row comes
@@ -198,6 +201,8 @@ def _build(path: str, annotated: bool) -> None:
     conf_9 = _fake_confirmation_number()
     conf_10 = _fake_confirmation_number()
     conf_11 = _fake_confirmation_number()
+    conf_12 = _fake_confirmation_number()
+    conf_13 = _fake_confirmation_number()
 
     c.setFont("Helvetica-Bold", 11)
     c.setFillColor(HexColor("#111827"))
@@ -321,6 +326,24 @@ def _build(path: str, annotated: bool) -> None:
     block(
         "TAHAW", "Smith", "John", "07/11/2026", 2, 0, "LEIS", "1KV", conf_11, "07/14/2026",
         [("Comments / Notes:", "Artisans 7/11 @ 7PM", "comments_notes")],
+    )
+
+    # 12. Turner, Grace -- sofa-bed request in a room that HAS one (RAQTTE
+    # is Lakeside, has_sofa_bed=True per rooms/directory.py) --
+    # match/sofa_bed_check.py's "satisfied" case, shown as an orange
+    # informational badge, not an alert.
+    block(
+        "RAQTTE", "Turner", "Grace", "07/10/2026", 2, 0, "LEIS", "L1KF", conf_12, "07/12/2026",
+        [("Comments / Notes:", "Requesting a sofa bed for the room.", "comments_notes")],
+    )
+
+    # 13. Wilson, Henry -- sofa-bed request in a room that does NOT have
+    # one (WTFACE is Main Lodge, has_sofa_bed=False) --
+    # match/sofa_bed_check.py's "unsatisfied" case, a real staff action
+    # item (likely needs a room move), shown as a red alert banner.
+    block(
+        "WTFACE", "Wilson", "Henry", "07/10/2026", 2, 0, "LEIS", "MWKV", conf_13, "07/12/2026",
+        [("Guest Notes:", "Guest asked for a sofa bed if available.", "guest_notes")],
     )
 
     c.showPage()

@@ -4,7 +4,7 @@ name: Build Windows executable
 # so it can't read fd_reader/__init__.py's __version__ (that's read later,
 # inside the job, for the artifact name below); this keeps the run list
 # readable with the program name instead of the triggering commit message.
-run-name: GuestYelpCheck build
+run-name: FD-reader build
 
 on:
   push:
