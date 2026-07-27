@@ -149,6 +149,13 @@ def _write_block(sheet: Worksheet, block: GuestBlock, row: int) -> int:
         cell.alignment = _WRAP
         field_row += 1
 
+    if block.pet_room_alert:
+        cell = sheet.cell(row=field_row, column=1, value=block.pet_room_alert)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color=RED, end_color=RED, fill_type="solid")
+        cell.alignment = _WRAP
+        field_row += 1
+
     right_row = row
     right_col = RIGHT_START_COL
     sheet.cell(row=right_row, column=right_col, value="Yelp Reservations").font = _FONT_LABEL

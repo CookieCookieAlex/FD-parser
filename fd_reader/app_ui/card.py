@@ -157,6 +157,8 @@ def render_card(block: GuestBlock, index: int) -> None:
             st.error(block.capacity_note, icon="🚨")
         if block.sofa_bed_alert:
             st.error(block.sofa_bed_alert, icon="🛋️")
+        if block.pet_room_alert:
+            st.error(block.pet_room_alert, icon="🐕")
 
         body_container = st.container(key=f"body-cols-{card_key}")
         with body_container:

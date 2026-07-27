@@ -18,17 +18,19 @@ never real guest IDs. Real room codes and rate plans are used
 (fd_reader/rooms/directory.py) where it matters; other values are
 placeholders.
 
-13 guests total, covering: a clean baseline match, a blank room name with
+14 guests total, covering: a clean baseline match, a blank room name with
 room type still set (the "missing_room_name" flag case from CLAUDE.md),
 all 3 note fields (Guest Notes / Reservation Notes / Comments-Notes)
 including the real Virtuoso + "BREAKFAST INCLLUDED" typo and the ALL-CAPS
 weekday-only note style, a note mentioning a reservation the Yelp side
 won't have, an unusual (non-"Reserved") status, a 2-record room move, a
 2-room exact-name group booking, a weekday note that's genuinely
-ambiguous over a long stay (both Fridays fall inside the window), and two
+ambiguous over a long stay (both Fridays fall inside the window), two
 sofa-bed-request cases (match/sofa_bed_check.py): one in a room that has
 one (satisfied, orange badge) and one in a room that doesn't (unsatisfied,
-red alert -- likely needs a room move).
+red alert -- likely needs a room move), and a pet-amenities note in a
+non-Cabin room (match/pet_room_check.py) -- red alert, staff needs to
+check whether it's a service dog.
 
 IMPORTANT layout constraint discovered while building this: the real
 parser (fd_reader/parsing/guests/__init__.py) treats whatever row comes
@@ -203,6 +205,7 @@ def _build(path: str, annotated: bool) -> None:
     conf_11 = _fake_confirmation_number()
     conf_12 = _fake_confirmation_number()
     conf_13 = _fake_confirmation_number()
+    conf_14 = _fake_confirmation_number()
 
     c.setFont("Helvetica-Bold", 11)
     c.setFillColor(HexColor("#111827"))
@@ -344,6 +347,15 @@ def _build(path: str, annotated: bool) -> None:
     block(
         "WTFACE", "Wilson", "Henry", "07/10/2026", 2, 0, "LEIS", "MWKV", conf_13, "07/12/2026",
         [("Guest Notes:", "Guest asked for a sofa bed if available.", "guest_notes")],
+    )
+
+    # 14. Perry, Katy -- pet-amenities note in a non-Cabin room (HEARTH is
+    # Main Lodge) -- match/pet_room_check.py's red-alert case: dogs are
+    # Cabins-only per policy, so this needs staff to check with the guest
+    # whether it's a service dog before anything else happens.
+    block(
+        "HEARTH", "Perry", "Katy", "07/10/2026", 2, 0, "LEIS", "MKVA", conf_14, "07/12/2026",
+        [("Comments / Notes:", "PET AMENITIES requested for small dog.", "comments_notes")],
     )
 
     c.showPage()

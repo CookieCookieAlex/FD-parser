@@ -83,7 +83,7 @@ def test_main_folder_mode_combines_arrivals_and_all_yelp_days(synthetic_folder, 
     captured = capsys.readouterr()
     assert "1 arrivals PDF(s)" in captured.out
     assert "8 Yelp PDF(s)" in captured.out
-    assert "14 guests" in captured.out
+    assert "15 guests" in captured.out
     assert "8 reservations" in captured.out
     assert "1 room move" in captured.out
     assert "2 group booking" in captured.out

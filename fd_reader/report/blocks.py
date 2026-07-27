@@ -15,10 +15,14 @@ problem) -- see colors.py for what each color means.
 Also shown: perk badges (Virtuoso / breakfast-included / pet amenities,
 match/perks.py) in ORANGE since they're informational, not match-status;
 an optional RED over-capacity warning (match/capacity_check.py) when
-guests_count exceeds the room's max_guests; and an optional sofa-bed
+guests_count exceeds the room's max_guests; an optional sofa-bed
 signal (match/sofa_bed_check.py) when a note field requests one --
 ORANGE "Sofa bed requested" badge if the assigned room has one, RED alert
-if it doesn't (a real staff action item, likely needs a room move).
+if it doesn't (a real staff action item, likely needs a room move); and an
+optional RED pet-room alert (match/pet_room_check.py) when a pet-amenities
+note is found but the assigned room isn't a Cabin -- dogs are Cabins-only,
+capped at 2 per cabin, per policy. A human still needs to check whether
+it's a service dog (exempt from the room restriction) before acting.
 """
 from __future__ import annotations
 
@@ -32,6 +36,7 @@ from fd_reader.match import (
     RoomGroup,
     RoomMove,
     check_capacity,
+    check_pet_room,
     check_sofa_bed,
     find_room_groups,
     is_breakfast_included,
@@ -70,6 +75,10 @@ class GuestBlock:
     # are mutually exclusive by construction (see _sofa_bed_signals).
     sofa_bed_requested: bool = False
     sofa_bed_alert: str | None = None
+    # Set when a pet-amenities note (a dog coming in) is found but the
+    # assigned room isn't a Cabin -- dogs aren't allowed elsewhere. A real
+    # staff action item: verify whether it's a service dog before acting.
+    pet_room_alert: str | None = None
     # Only ever set by app_ui/pipeline.py (not by build_guest_blocks below,
     # and not read by the .xlsx writer) -- see pipeline.py's
     # _flag_duplicate_confirmation_numbers for why this needs to live on
@@ -196,6 +205,17 @@ def _sofa_bed_signals(guest: GuestRecord) -> tuple[bool, str | None]:
     )
 
 
+def _pet_room_note(guest: GuestRecord) -> str | None:
+    check = check_pet_room(guest)
+    if check is None:
+        return None
+    return (
+        f"Pet amenities noted but {guest.room_name} ({check.room_category}) isn't a Cabin -- "
+        f"dogs aren't allowed in this room. Please check with the guest whether this is a "
+        f"service dog before acting."
+    )
+
+
 def _room_move_note(guest: GuestRecord, moved_from: dict, moved_to: dict) -> str | None:
     if guest.confirmation_number in moved_from:
         move = moved_from[guest.confirmation_number]
@@ -306,6 +326,7 @@ def build_guest_blocks(
                 capacity_note=_capacity_note(guest),
                 sofa_bed_requested=sofa_bed_requested,
                 sofa_bed_alert=sofa_bed_alert,
+                pet_room_alert=_pet_room_note(guest),
             )
         )
 

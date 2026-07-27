@@ -43,11 +43,11 @@ def _yelp_paths():
 
 
 def test_run_pipeline_produces_expected_counts():
-    """Real end-to-end shape: 1 arrivals PDF (14 guests) + 8 single-day
+    """Real end-to-end shape: 1 arrivals PDF (15 guests) + 8 single-day
     Yelp PDFs (one reservation each) -- the same file mix a real 7/8-day
     folder would have."""
     blocks, room_move_count, group_booking_count = _run_pipeline_for_paths((ARRIVALS_PDF,), _yelp_paths())
-    assert len(blocks) == 14
+    assert len(blocks) == 15
     # Bieber, Daniel: MOSS -> BIRCH is the one synthetic room move.
     assert room_move_count == 1
     # Hanks (3-room exact-name) + Depp (2-room same-surname) = 2 groups.

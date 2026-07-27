@@ -6,9 +6,11 @@
   restaurant reservations against what Yelp actually shows for them.
 - room_groups.py / room_moves.py: multi-room family bookings and same-guest
   room changes across adjacent stays.
-- perks.py / capacity_check.py / sofa_bed_check.py: guest-list-only signals
-  (perk call-outs, guest count vs. room capacity, sofa-bed request vs.
-  whether the assigned room actually has one).
+- perks.py / capacity_check.py / sofa_bed_check.py / pet_room_check.py:
+  guest-list-only signals (perk call-outs, guest count vs. room capacity,
+  sofa-bed request vs. whether the assigned room actually has one, and a
+  pet-amenities dog vs. whether the assigned room is a Cabin -- dogs are
+  Cabins-only per policy).
 """
 from __future__ import annotations
 
@@ -25,6 +27,7 @@ from fd_reader.match.notes_cross_check import (
     cross_check_notes,
 )
 from fd_reader.match.perks import is_breakfast_included, is_pet_amenities, is_virtuoso
+from fd_reader.match.pet_room_check import PetRoomCheck, check_pet_room
 from fd_reader.match.room_groups import RoomGroup, find_room_groups
 from fd_reader.match.room_moves import RoomMove, detect_room_moves
 from fd_reader.match.sofa_bed_check import SofaBedCheck, check_sofa_bed, requests_sofa_bed
@@ -42,6 +45,8 @@ __all__ = [
     "is_breakfast_included",
     "is_pet_amenities",
     "is_virtuoso",
+    "PetRoomCheck",
+    "check_pet_room",
     "RoomGroup",
     "find_room_groups",
     "RoomMove",

@@ -100,14 +100,16 @@ def _label_row(pdf, top, label, value):
 
 
 def build_synthetic_arrivals_pdf(path: str) -> None:
-    """14 fake guests covering: a clean match, a blank room name
+    """15 fake guests covering: a clean match, a blank room name
     (missing_room_name), a same-surname group, a 3-room exact-name group, a
     Virtuoso + breakfast-typo perk guest, a 2-record room move, a
     weekday-only note, a multi-entry (blank-line separated) Comments/Notes
-    guest, and two dedicated sofa-bed-request guests (one in a room that
-    has one, one in a room that doesn't) -- on top of the sofa-bed
-    requests folded into the Swift/Bieber records above using different
-    phrasing (rollaway/extra bed vs. the literal "sofa bed" here)."""
+    guest, two dedicated sofa-bed-request guests (one in a room that has
+    one, one in a room that doesn't), and a dedicated pet-amenities-in-a-
+    non-Cabin-room guest (on top of the sofa-bed requests folded into the
+    Swift/Bieber records above using different phrasing (rollaway/extra bed
+    vs. the literal "sofa bed" here), and the pet-amenities mention folded
+    into Cyrus, Sophia's multi-entry notes above)."""
     pdf = SyntheticPdf()
     top = 20.0
 
@@ -227,6 +229,17 @@ def build_synthetic_arrivals_pdf(path: str) -> None:
     _detail_row(pdf, top, "MKV", "SYN-1014-1", "07/12/2026")
     advance()
     _label_row(pdf, top, "Guest Notes:", "Guest asked for a sofa bed if available.")
+    advance(20)
+
+    # 15. Perry, Katy -- PET AMENITIES in STREG (St. Regis, Main Lodge --
+    # not a Cabin) -- match/pet_room_check.py's red-alert case: dogs are
+    # Cabins-only, so this needs staff to check with the guest whether it's
+    # a service dog before anything else happens.
+    _anchor_row(pdf, top, "STREG", "Perry", "Katy", "Reserved", "07/10/2026", 2, 0, "LEIS")
+    advance()
+    _detail_row(pdf, top, "MKV", "SYN-1015-1", "07/12/2026")
+    advance()
+    _label_row(pdf, top, "Comments / Notes:", "PET AMENITIES requested for small dog.")
     advance(20)
 
     pdf.save(path)
